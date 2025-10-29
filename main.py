@@ -66,7 +66,7 @@ def show_palette(palette):
     print(f"\n{CYAN}Палитра цветов:{RESET}")
     for rgb in palette:
         r, g, b = tuple(map(int, rgb))
-        print(f"\033[48;2;{r};{g};{b}m   \033[0m", end=" ")
+        print(f"\033[48;2;{r};{g};{b}m \033[0m", end=" ")
     print("\n")
 
 def save_palette_image(palette, base_name, out_dir):
@@ -88,37 +88,33 @@ def show_effects_table():
         (1,  "Постеризация",    "Чистое упрощение цветов, без фильтров.",               "Очень быстро", "Используй малое число цветов для графичных результатов"),
         (2,  "Плавные пятна",   "Мягкие переходы, глянец.",                            "Средне",       "Подходит для портретов — увеличь bilateral для более плавного блеска"),
         (3,  "Комикс",          "Контуры + сглаженные пятна — рисунок тушью.",         "Средне",       "Уменьши резкость контуров, если слишком агрессивно"),
-        (4,  "Бумага (Cutout)", "Вырезанные слои, неровные края (как мел/ножницы).",    "Средне",       "Подходит для силуэтов — попробуй разное порога Canny"),
-        (5,  "Сетка",           "Половинная тонировка/рубрикация — ретро-штриховка.",   "Очень быстро", "Шаг сетки влияет на «тон»"),
+        (4,  "Бумага (Cutout)", "Вырезанные слои, неровные края (как мел/ножницы).",   "Средне",       "Подходит для силуэтов — попробуй разное порога Canny"),
+        (5,  "Сетка",           "Половинная тонировка/рубрикация — ретро-штриховка.",  "Очень быстро", "Шаг сетки влияет на «тон»"),
         (6,  "Пыль",            "Мягкий шум + рассеянный свет в ярких зонах.",         "Очень быстро", "Для эффекта — увеличь уровень шума и лёгкий blur"),
-        (7,  "Мел",             "Рисование мелом: мягкие, немного сухие границы.",      "Медленно",     "Поиграй с detail / контрастом для «пыльного» мелка"),
-        (8,  "Разбитое стекло", "Трещины поверх картинки + локальная дисторсия.",       "Средне",       "Трещины генерируются дополнительно — регенерация каждый запуск"),
+        (7,  "Мел",             "Рисование мелом: мягкие, немного сухие границы.",     "Медленно",     "Поиграй с detail / контрастом для «пыльного» мелка"),
+        (8,  "Разбитое стекло", "Трещины поверх картинки + локальная дисторсия.",      "Средне",       "Трещины генерируются дополнительно — регенерация каждый запуск"),
         (9,  "Пластик",         "Глянцевый, игрушечный, яркие блики.",                 "Средне",       "Добавь specular highlight mask для усиления блеска"),
-        (10, "Неон",            "Тёмный фон + светящиеся контуры (голубой/пурпур).",    "Средне",       "Попробуй разные неоновые палитры — cyan/magenta"),
-        (11, "Хром",            "Металлический блеск, холодные тона (синее сяйво).",     "Средне",       "Используем градиенты + колормэп для контроля оттенка"),
-        (12, "Свеча",           "Тёплое боковое освещение, золотистые тени.",           "Очень быстро", "Подойдёт для сцен с тёплым настроением"),
+        (10, "Неон",            "Тёмный фон + светящиеся контуры (голубой/пурпур).",   "Средне",       "Попробуй разные неоновые палитры — cyan/magenta"),
+        (11, "Хром",            "Металлический блеск, холодные тона (синее сяйво).",   "Средне",       "Используем градиенты + колормэп для контроля оттенка"),
+        (12, "Свеча",           "Тёплое боковое освещение, золотистые тени.",          "Очень быстро", "Подойдёт для сцен с тёплым настроением"),
         (13, "Мох",             "Зелёный налёт, мягкая текстура.",                     "Средне",       "Добавляет зелёные шумовые слои и смягчение"),
-        (14, "Акварель",        "Мягкие растекающиеся переходы, как кисть и вода.",     "Медленно",     "Убираем резкие контуры, ставим сильный edge-preserve + blur"),
+        (14, "Акварель",        "Мягкие растекающиеся переходы, как кисть и вода.",    "Медленно",     "Убираем резкие контуры, ставим сильный edge-preserve + blur"),
         (15, "Технический",     "Чертёж: белые линии на синем фоне (blueprint).",      "Очень быстро", "Линии — белые, фон — синий; инвертируем каналы правильно"),
-        (16, "Карта",           "Топографическая палитра — уровни как карта высот.",    "Очень быстро", "Подходит для пейзажей/спутника"),
+        (16, "Карта",           "Топографическая палитра — уровни как карта высот.",   "Очень быстро", "Подходит для пейзажей/спутника"),
         (17, "Зеркало",         "Зеркальные отражения — симметрии по осям.",           "Очень быстро", "Генерирует вертикаль/горизонталь/диагонали одновременно"),
         (18, "Сон",             "Плывущая, слегка искажённая структура.",              "Медленно",     "Искажения случайны — будут разные каждый раз"),
         (19, "Пиксель-Арт",     "Чистая пикселизация (ретро).",                        "Очень быстро", "scale_factor ~0.05..0.2"),
-        (20, "Огненный",        "Тёплое свеча/пламя — мягкий glow в тёплых тонах.",     "Средне",       "Glow делается по яркостной маске, не просто контраст"),
+        (20, "Огненный",        "Тёплое свеча/пламя — мягкий glow в тёплых тонах.",    "Средне",       "Glow делается по яркостной маске, не просто контраст"),
     ]
-
-    # ширины столбцов
     w_num, w_name, w_desc, w_speed = 4, 20, 45, 14
     wrap_desc = 45
     wrap_hint = 40
-
     print(f"\n{CYAN}{'='*110}{RESET}")
     print(f"{BOLD}{BLUE}СПИСОК ДОСТУПНЫХ ЭФФЕКТОВ (с подсказками){RESET}")
     print(f"{CYAN}{'-'*110}{RESET}")
     header = f"{BOLD}{MAGENTA}{'№':<{w_num}}{CYAN}{'Название':<{w_name}}{YELLOW}{'Описание':<{w_desc}}{GREEN}{'Скорость':<{w_speed}}{RESET}Подсказка"
     print(header)
     print(f"{CYAN}{'-'*110}{RESET}")
-
     for n, name, desc, speed, hint in effects:
         desc_lines = textwrap.wrap(desc, wrap_desc)
         hint_lines = textwrap.wrap(hint, wrap_hint)
@@ -130,7 +126,6 @@ def show_effects_table():
             speed_str = f"{GREEN}{speed:<{w_speed}}{RESET}" if i == 0 else " "*w_speed
             hint_str = f"{hint_lines[i]}" if i < len(hint_lines) else ""
             print(f"{num_str}{name_str}{desc_str}{speed_str}{hint_str}")
-
     print(f"{CYAN}{'='*110}{RESET}\n")
 
 # === Обработка одного изображения ===
@@ -145,90 +140,68 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
         k = (blur_strength * 2 + 1) | 1
         img = cv2.GaussianBlur(img, (k, k), 0)
 
-    # Кластеризация
+    # Кластеризация — ИСПРАВЛЕНО: без сортировки
     print(f"\n{CYAN}[INFO]{RESET} Кластеризация ({n_colors} цветов) для {os.path.basename(image_path)} ...")
     start = time.time()
-    pixels = img.reshape(-1, 3)
-    kmeans = KMeans(n_clusters=n_colors, random_state=42, n_init=5)
+    pixels = img.reshape(-1, 3).astype(np.float32)
+    kmeans = KMeans(n_clusters=n_colors, random_state=None, n_init=10)
     labels = kmeans.fit_predict(pixels)
-    palette = np.uint8(kmeans.cluster_centers_)
-    palette = np.array(sort_palette(palette))
+    palette = np.uint8(kmeans.cluster_centers_)  # ← БЕЗ sort_palette
     quantized = palette[labels].reshape(img.shape).astype(np.uint8)
 
-    # === ЭФФЕКТЫ ТИПОВ (улучшенные) ===
-
-    # 1 Постеризация — оставляем как есть (чистая палитра)
-
-    if mode == 2:  # Плавные пятна (глянец)
-        # мягкий bilateral + лёгкий контраст
+    # === ЭФФЕКТЫ (без изменений) ===
+    if mode == 2:
         quantized = cv2.bilateralFilter(quantized, 9, 75, 75)
         quantized = cv2.convertScaleAbs(quantized, alpha=1.05, beta=6)
-
-    elif mode == 3:  # Комикс — контуры, но сглаженные пятна
-        # мягкая фильтрация цвета + аккуратные контуры
+    elif mode == 3:
         smooth = cv2.bilateralFilter(quantized, 9, 75, 75)
         gray = cv2.cvtColor(smooth, cv2.COLOR_RGB2GRAY)
         edges = cv2.Canny(gray, 60, 140)
         edges = cv2.dilate(edges, np.ones((3,3), np.uint8), iterations=1)
         edges_rgb = cv2.cvtColor(255 - edges, cv2.COLOR_GRAY2BGR)
-        # blend: keep colored smooth areas, darken lines slightly
         quantized = cv2.bitwise_and(smooth, edges_rgb)
-
-    elif mode == 4:  # Бумага (Cutout) — вырезанные слои, неровные края
+    elif mode == 4:
         gray = cv2.cvtColor(quantized, cv2.COLOR_RGB2GRAY)
-        # порог для областей, затем морфология для неровных краёв
         _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU)
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
-        # немного «шероховатости» краёв
         edges = cv2.Canny(mask, 50, 150)
         edges = cv2.dilate(edges, np.ones((3,3), np.uint8), iterations=1)
         mask_inv = cv2.bitwise_not(edges)
         out = cv2.bitwise_and(quantized, quantized, mask=mask_inv)
-        # усиление краёв (тонкие тени)
         shadow = cv2.GaussianBlur(out, (5,5), 0)
         quantized = cv2.addWeighted(out, 1.0, shadow, 0.08, 0)
-
-    elif mode == 5:  # Сетка (GridTone)
-        step = max(4, int(w / 100))  # адаптивный шаг
+    elif mode == 5:
+        step = max(4, int(w / 100))
         grid = quantized.copy()
         for y in range(0, grid.shape[0], step):
             for x in range(0, grid.shape[1], step):
                 if ((x//step) + (y//step)) % 2 == 0:
                     grid[y:y+step, x:x+step] = (grid[y:y+step, x:x+step] * 0.88).astype(np.uint8)
         quantized = grid
-
-    elif mode == 6:  # Пыль (Dustlight) — шум + рассеяние света в ярких зонах
+    elif mode == 6:
         noise = np.random.normal(0, 8, quantized.shape).astype(np.int16)
         noisy = np.clip(quantized.astype(np.int16) + noise, 0, 255).astype(np.uint8)
-        # bright mask for veiling (bloom)
         gray = cv2.cvtColor(noisy, cv2.COLOR_RGB2GRAY)
         bright = cv2.threshold(gray, np.percentile(gray, 85), 255, cv2.THRESH_BINARY)[1]
         bright = cv2.GaussianBlur(bright, (21,21), 0)
         bright = (bright / 255.0)[:, :, None]
         bloom = (noisy.astype(np.float32) * (0.6 + 0.4 * bright)).clip(0,255).astype(np.uint8)
         quantized = cv2.GaussianBlur(bloom, (3,3), 0)
-
-    elif mode == 7:  # Мел (chalk) — рисование мелом: мягкие сухие границы
-        # усиленный контраст по светлым областям + grain
+    elif mode == 7:
         gray = cv2.cvtColor(quantized, cv2.COLOR_RGB2GRAY)
         edges = cv2.Canny(gray, 50, 130)
         chalk = cv2.convertScaleAbs(quantized, alpha=0.95, beta=-10)
         grain = (np.random.normal(0, 18, quantized.shape)).astype(np.int16)
         chalk_g = np.clip(chalk.astype(np.int16) + grain, 0, 255).astype(np.uint8)
-        # сделать края чуть мягче
         chalk_g = cv2.GaussianBlur(chalk_g, (3,3), 0)
-        # наложить тонкие «меловые» контуры (снижение яркости вдоль edges)
         edges3 = cv2.dilate(edges, np.ones((3,3), np.uint8), iterations=1)
         mask_dark = (edges3[:,:,None] > 0).astype(np.uint8) * 30
         quantized = np.clip(chalk_g.astype(np.int16) - mask_dark, 0, 255).astype(np.uint8)
-
-    elif mode == 8:  # Разбитое стекло — трещины + рыбьеглазый эффект по контурам
-        # создаём независимую карту трещин (по случайной генерации)
+    elif mode == 8:
         hq, wq = quantized.shape[:2]
         cracks = np.zeros((hq, wq), dtype=np.uint8)
-        # рисуем несколько лидирующих линий от случайной точки (радиальные)
         n_cracks = max(3, min(12, int(min(hq,wq)/100)))
         center_x = np.random.randint(wq//3, wq*2//3)
         center_y = np.random.randint(hq//3, hq*2//3)
@@ -238,129 +211,92 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
             x2 = int(center_x + np.cos(angle) * length)
             y2 = int(center_y + np.sin(angle) * length)
             cv2.line(cracks, (center_x, center_y), (x2, y2), 255, thickness=np.random.randint(1,3))
-            # мелкие ответвления
             if np.random.rand() > 0.5:
                 ax = int(center_x + np.cos(angle + 0.3) * (length//2))
                 ay = int(center_y + np.sin(angle + 0.3) * (length//2))
                 cv2.line(cracks, (ax, ay), (x2, y2), 200, thickness=1)
         cracks = cv2.dilate(cracks, np.ones((3,3), np.uint8), iterations=1)
         cracks_rgb = cv2.cvtColor(cracks, cv2.COLOR_GRAY2BGR)
-        # fish-eye near cracks: create displacement around crack mask
         mask = cracks.astype(bool)
         displaced = quantized.copy()
         ys, xs = np.where(mask)
         for (y, x) in zip(ys, xs):
-            # small displacement outward from center of cracks
             dx = int((x - center_x) * 0.02)
             dy = int((y - center_y) * 0.02)
             nx = np.clip(x + dx, 0, wq-1)
             ny = np.clip(y + dy, 0, hq-1)
             displaced[y,x] = quantized[ny, nx]
         quantized = cv2.addWeighted(quantized, 0.9, displaced, 0.1, 0)
-        # overlay cracks as bright thin lines (specular)
         lines = cv2.cvtColor(cracks, cv2.COLOR_GRAY2BGR)
         lines = cv2.GaussianBlur(lines, (3,3), 0)
         quantized = cv2.addWeighted(quantized, 0.85, lines, 0.6, 0)
-
-    elif mode == 9:  # Пластик (Plastify) — глянец, specular highlights
+    elif mode == 9:
         plast = cv2.bilateralFilter(quantized, 7, 90, 90)
-        # усиление цветовой насыщенности и контраста
         plast = cv2.convertScaleAbs(plast, alpha=1.15, beta=8)
-        # specular: яркостная маска + размытие
         gray = cv2.cvtColor(plast, cv2.COLOR_RGB2GRAY)
         spec = cv2.threshold(gray, np.percentile(gray, 92), 255, cv2.THRESH_BINARY)[1]
         spec = cv2.GaussianBlur(spec, (31,31), 0)
         spec = (spec / 255.0)[:, :, None]
         highlight = (255 * (0.6 * spec)).astype(np.uint8)
         quantized = np.clip(plast.astype(np.int16) + highlight.astype(np.int16), 0, 255).astype(np.uint8)
-
-    elif mode == 10:  # Неон (NeonDream) — darken + colored glow along edges
-        # тёмный фон — приглушим базовый слой
+    elif mode == 10:
         dark = (quantized * 0.25).astype(np.uint8)
         gray = cv2.cvtColor(quantized, cv2.COLOR_RGB2GRAY)
         edges = cv2.Canny(gray, 50, 150)
         edges = cv2.dilate(edges, np.ones((3,3), np.uint8), iterations=1)
-        # make multi-color neon by mapping edges to color gradients
         glow = np.zeros_like(quantized)
-        # choose neon palette (cyan and magenta)
-        glow[..., 0] = cv2.GaussianBlur(edges, (9,9), 0)  # blue channel
-        glow[..., 2] = cv2.GaussianBlur(edges, (15,15), 0)  # red channel
+        glow[..., 0] = cv2.GaussianBlur(edges, (9,9), 0)
+        glow[..., 2] = cv2.GaussianBlur(edges, (15,15), 0)
         glow = cv2.blur(glow, (7,7))
         glow = cv2.convertScaleAbs(glow * 2)
         quantized = cv2.addWeighted(dark, 1.0, glow, 0.9, 0)
-
-    elif mode == 11:  # Хром (Chrome) — металлический блеск (холодные тона)
-        # используем градиентную карту яркости и колормэп winter-like
+    elif mode == 11:
         gray = cv2.cvtColor(quantized, cv2.COLOR_RGB2GRAY)
-        # сильный локальный контраст
         grad = cv2.Laplacian(gray, cv2.CV_16S, ksize=3)
         grad = cv2.convertScaleAbs(grad)
-        # normalize and combine with gray to get metallic base
         combined = cv2.addWeighted(gray, 0.6, grad, 0.8, 0)
         combined = cv2.equalizeHist(combined)
-        # apply a blueish colormap (avoid red/green artifacts)
         chrome = cv2.applyColorMap(combined, cv2.COLORMAP_WINTER)
-        # mix with original low-opacity to keep shape
         quantized = cv2.addWeighted(chrome, 0.95, cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR), 0.05, 0)
-
-    elif mode == 12:  # Свеча (Candlelight)
-        overlay = np.full_like(quantized, (20, 30, 60))  # тёплый оранжево-жёлтый налёт
+    elif mode == 12:
+        overlay = np.full_like(quantized, (20, 30, 60))
         blurred = cv2.GaussianBlur(quantized, (15,15), 30)
         warm = cv2.addWeighted(blurred, 0.85, overlay, 0.25, 0)
         quantized = cv2.addWeighted(quantized, 0.75, warm, 0.6, 0)
-
-    elif mode == 13:  # Мох (Moss)
+    elif mode == 13:
         green = np.random.normal(0, 25, quantized.shape).astype(np.int16)
         moss = np.clip(quantized.astype(np.int16) + green, 0, 255).astype(np.uint8)
         moss[..., 1] = np.clip(moss[..., 1] + 18, 0, 255)
         quantized = cv2.bilateralFilter(moss, 9, 60, 60)
-
-    elif mode == 14:  # Акварель (WaterBloom) — убираем акцент на контуры
-        # edge preserving, затем сильное размытие цветов для растекания
+    elif mode == 14:
         soft = cv2.edgePreservingFilter(quantized, flags=1, sigma_s=60, sigma_r=0.6)
-        # немного размазываем цвета, но не контуры
         color_flow = cv2.GaussianBlur(soft, (9,9), 3)
         quantized = cv2.addWeighted(soft, 0.6, color_flow, 0.4, 0)
-
-    elif mode == 15:  # Технический (Blueprint) — белые линии на синем фоне
+    elif mode == 15:
         gray = cv2.cvtColor(quantized, cv2.COLOR_RGB2GRAY)
         edges = cv2.Canny(gray, 50, 120)
-        # тонкие белые линии (сглаженные)
         lines = cv2.GaussianBlur(edges, (3,3), 0)
         lines = cv2.threshold(lines, 40, 255, cv2.THRESH_BINARY)[1]
         lines_rgb = cv2.cvtColor(lines, cv2.COLOR_GRAY2BGR)
-        # blue background
         blue_bg = np.full_like(quantized, (10, 60, 140))
-        # invert lines to white on blue
         white_lines = cv2.bitwise_and(255 - lines_rgb, np.full_like(lines_rgb, 255))
         white_lines = (white_lines > 0).astype(np.uint8) * 255
         quantized = cv2.addWeighted(blue_bg, 1.0, white_lines, 1.0, 0)
-
-    elif mode == 16:  # Карта (Terrain) — с fallback для сборок OpenCV без COLORMAP_TERRAIN
+    elif mode == 16:
         gray = cv2.cvtColor(quantized, cv2.COLOR_RGB2GRAY)
-        # привести к uint8 (на всякий случай)
         gray8 = cv2.convertScaleAbs(gray)
-        # выбрать подходящую карту: если нет TERRAIN — используем JET
         cmap = cv2.__dict__.get('COLORMAP_TERRAIN', None)
         if cmap is None:
-            # можно поменять на COLORMAP_OCEAN, COLORMAP_JET и т.п. в зависимости от желаемой палитры
             cmap = cv2.COLORMAP_JET
         quantized = cv2.applyColorMap(gray8, cmap)
-
-    elif mode == 17:  # Зеркало (MirrorSplit) — симметрии по нескольким осям
+    elif mode == 17:
         hq, wq = quantized.shape[:2]
-        v = quantized[:, ::-1]  # вертикаль
-        h_flip = quantized[::-1, :]  # горизонталь
-        vh = np.vstack((v, h_flip))
-        # составим 2x2 коллаж: original | vertical / horizontal | vertical+horizontal
+        v = quantized[:, ::-1]
+        h_flip = quantized[::-1, :]
         top = np.hstack((quantized, v))
         bottom = np.hstack((h_flip, cv2.flip(v, 0)))
-        # привести к одинаковой высоте (вдруг отличается)
         quantized = np.vstack((top, bottom))
-        # центрим результат (если слишком большой — crop до исходного размера *2)
-        # но сохраняем визуальную информацию — это мульти-ось зеркалирования
-
-    elif mode == 18:  # Сон (Dreamwarp)
+    elif mode == 18:
         offset = max(4, int(min(w,h) * 0.01))
         warped = np.zeros_like(quantized)
         for y in range(quantized.shape[0]):
@@ -370,23 +306,18 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
                 ny = np.clip(y + np.random.randint(-offset, offset+1), 0, quantized.shape[0]-1)
                 warped[y, x] = quantized[ny, nx]
         quantized = cv2.GaussianBlur(warped, (3,3), 0)
-
-    elif mode == 19:  # Пиксель-Арт (RetroGrid)
+    elif mode == 19:
         scale_factor = max(0.04, min(0.2, 32.0 / max(w, h)))
         small = cv2.resize(quantized, (0, 0), fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_NEAREST)
         quantized = cv2.resize(small, (quantized.shape[1], quantized.shape[0]), interpolation=cv2.INTER_NEAREST)
-
-    elif mode == 20:  # Огненный (Ember) — glow по яркости, не просто контраст
+    elif mode == 20:
         gray = cv2.cvtColor(quantized, cv2.COLOR_RGB2GRAY)
-        # берём яркостную маску
         bright = cv2.threshold(gray, np.percentile(gray, 70), 255, cv2.THRESH_BINARY)[1]
         bright_blur = cv2.GaussianBlur(bright, (21,21), 0)
         bright_mask = (bright_blur / 255.0)[:, :, None]
-        # теплые тона по LUT: blend original + warm colormap
         warm = cv2.applyColorMap(gray, cv2.COLORMAP_HOT)
         glow = (warm.astype(np.float32) * (0.8 * bright_mask)).clip(0,255).astype(np.uint8)
         quantized = cv2.addWeighted(quantized, 0.6, glow, 0.9, 0)
-        # чуть шумить для «искр»
         sparks = (np.random.rand(*gray.shape) > 0.995).astype(np.uint8) * 255
         sparks = cv2.GaussianBlur(sparks, (5,5), 0)
         sparks_rgb = cv2.cvtColor(sparks, cv2.COLOR_GRAY2BGR)
@@ -395,26 +326,21 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
     duration = time.time() - start
     print(f"{GREEN}Кластеризация завершена за {duration:.2f} сек.{RESET}")
 
-    # Формирование папки с новой системой имен
+    # === Сохранение ===
     base_name = os.path.splitext(os.path.basename(image_path))[0]
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # Новая структура: имя + время + c{colors}_b{blur}_m{mode}
     out_dir_name = f"{base_name}_{timestamp}_c{n_colors}_b{blur_strength}_m{mode}"
     out_dir = os.path.join("output_minimal_art", out_dir_name)
     os.makedirs(out_dir, exist_ok=True)
 
-    # Сохранение арта и палитры
     art_path = os.path.join(out_dir, f"{base_name}_minimal.png")
     Image.fromarray(quantized).save(art_path)
     palette_path = save_palette_image(palette, base_name, out_dir)
 
-    # Сохраняем настройки в txt
-    mode_names = {
-        1:"Постеризация",2:"Плавные пятна",3:"Комикс",4:"Бумага",5:"Сетка",6:"Пыль",
-        7:"Мел",8:"Разбитое стекло",9:"Пластик",10:"Неон",11:"Хром",12:"Свеча",
-        13:"Мох",14:"Акварель",15:"Технический",16:"Карта",17:"Зеркало",18:"Сон",
-        19:"Пиксель-Арт",20:"Огненный"
-    }
+    mode_names = {1:"Постеризация",2:"Плавные пятна",3:"Комикс",4:"Бумага",5:"Сетка",6:"Пыль",
+                  7:"Мел",8:"Разбитое стекло",9:"Пластик",10:"Неон",11:"Хром",12:"Свеча",
+                  13:"Мох",14:"Акварель",15:"Технический",16:"Карта",17:"Зеркало",18:"Сон",
+                  19:"Пиксель-Арт",20:"Огненный"}
     txt_path = os.path.join(out_dir, f"{base_name}_settings.txt")
     with open(txt_path, "w", encoding="utf-8") as f:
         f.write("=== Минималистичный арт-генератор ===\n")
@@ -429,13 +355,11 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
         for rgb in palette:
             f.write(f" {tuple(map(int, rgb))}\n")
 
-    # Вывод итогов
     print(f"\n{GREEN}Сохранено:{RESET}")
     print(f" Результат: {art_path}")
     print(f" Палитра: {palette_path}")
     print(f" Настройки: {txt_path}")
 
-    # --- Сравнение оригинал + результат ---
     orig = Image.open(image_path).convert("RGB")
     if scale != 1.0:
         w0, h0 = orig.size
@@ -449,26 +373,19 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
             combined = np.hstack((orig_np, q_resized))
     except Exception:
         combined = quantized
-
     compare_path = os.path.join(out_dir, f"{base_name}_compare.png")
     Image.fromarray(combined).save(compare_path)
     print(f" Сравнение: {compare_path}")
 
-    # Показываем палитру в терминале
     show_palette(palette)
 
+# === Парсер списков ===
 def parse_int_list(s: str, min_v: int, max_v: int):
-    """
-    Парсит строку вида "4,8,12", "0-3,5" или "all" в список уникальных int внутри [min_v,max_v].
-    Возвращает отсортированный список.
-    """
     if not s:
         return []
-
     s = s.strip().lower()
     if s == "all":
         return list(range(min_v, max_v + 1))
-
     vals = set()
     for part in s.split(","):
         part = part.strip()
@@ -495,14 +412,12 @@ def parse_int_list(s: str, min_v: int, max_v: int):
                 continue
     return sorted(vals)
 
+# === Основной цикл ===
 def main():
     print(f"\n{BOLD}{BLUE}МИНИМАЛИСТИЧНЫЙ АРТ-ГЕНЕРАТОР{RESET}")
     print(f"{MAGENTA}{'=' * 40}{RESET}")
-
-    # Показываем таблицу эффектов
     show_effects_table()
 
-    # Получаем файлы (аргументы CLI или диалог)
     args = sys.argv[1:]
     image_paths = []
     if args:
@@ -516,14 +431,11 @@ def main():
             return
     else:
         image_paths = select_images_via_dialog(multi=True)
-
     if not image_paths:
         print(f"{RED}Файлы не выбраны. Выход.{RESET}")
         return
-
     print(f"{CYAN}Выбрано:{RESET} {', '.join(os.path.basename(p) for p in image_paths)}")
 
-    # === ПАРАМЕТРЫ (списки) ===
     ncolors_input = input(f"{YELLOW}Количество цветов (2–32), например: 4,8,12 или 4-12: {RESET}").strip()
     n_colors_list = parse_int_list(ncolors_input, 2, 32)
     if not n_colors_list:
@@ -544,7 +456,6 @@ def main():
         print(f"{RED}Ни одного корректного значения для 'Тип эффекта'. Выход.{RESET}")
         return
 
-    # Информация перед запуском
     total = len(image_paths) * len(n_colors_list) * len(blur_list) * len(modes_list)
     print(f"\n{CYAN}Запустим {total} задач(и):{RESET}")
     print(f" • Файлов: {len(image_paths)}")
@@ -553,7 +464,6 @@ def main():
     print(f" • Типы: {', '.join(map(str, modes_list))}")
     print(f" • Масштаб: {scale}\n")
 
-    # Обрабатываем все комбинации
     for path in image_paths:
         for n_colors in n_colors_list:
             for blur_strength in blur_list:
@@ -562,7 +472,6 @@ def main():
                     try:
                         process_single(path, n_colors, scale, blur_strength, mode)
                     except Exception as e:
-                        # лог ошибки и продолжение
                         print(f"\n{RED}[ОШИБКА при обработке]{RESET} {e}")
                         import traceback
                         traceback.print_exc()
