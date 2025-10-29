@@ -146,8 +146,6 @@ def main():
     print(f"\n{BOLD}{BLUE}МИНИМАЛИСТИЧНЫЙ АРТ-ГЕНЕРАТОР{RESET}")
     print(f"{MAGENTA}{'=' * 40}{RESET}")
     # Если есть аргументы в командной строке — используем их как пути к файлам
-    if image_paths:
-        print(f"{CYAN}Выбран файл:{RESET} {', '.join(os.path.basename(p) for p in image_paths)}")
     args = sys.argv[1:]
     image_paths = []
     if args:
@@ -162,6 +160,9 @@ def main():
     else:
         # если аргументов нет — открываем диалог (позволим выбрать несколько файлов)
         image_paths = select_images_via_dialog(multi=True)
+    # вот сюда переносим вывод выбранных файлов
+    if image_paths:
+        print(f"{CYAN}Выбран файл:{RESET} {', '.join(os.path.basename(p) for p in image_paths)}")
     if not image_paths:
         print(f"{RED}Файлы не выбраны. Выход.{RESET}")
         return
