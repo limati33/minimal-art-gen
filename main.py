@@ -5,10 +5,12 @@ from sklearn.cluster import KMeans
 from PIL import Image, ImageDraw
 import os
 import datetime
+import textwrap
 import time
 import tkinter as tk
 from tkinter import filedialog
 from colorama import init, Fore, Style
+
 # === Инициализация цветов терминала ===
 init(autoreset=True)
 RESET = Style.RESET_ALL
@@ -105,14 +107,31 @@ def show_effects_table():
         (20, "Огненный",        "Тёплое свеча/пламя — мягкий glow в тёплых тонах.",     "Средне",       "Glow делается по яркостной маске, не просто контраст"),
     ]
 
-    print(f"\n{CYAN}{'='*90}{RESET}")
+    # ширины столбцов
+    w_num, w_name, w_desc, w_speed = 4, 20, 45, 14
+    wrap_desc = 45
+    wrap_hint = 40
+
+    print(f"\n{CYAN}{'='*110}{RESET}")
     print(f"{BOLD}{BLUE}СПИСОК ДОСТУПНЫХ ЭФФЕКТОВ (с подсказками){RESET}")
-    print(f"{CYAN}{'-'*90}{RESET}")
-    print(f"{BOLD}{'№':<3} {'Название':<15} {'Описание':<40} {'Скорость':<12} {'Подсказка'}{RESET}")
-    print(f"{CYAN}{'-'*90}{RESET}")
+    print(f"{CYAN}{'-'*110}{RESET}")
+    header = f"{BOLD}{MAGENTA}{'№':<{w_num}}{CYAN}{'Название':<{w_name}}{YELLOW}{'Описание':<{w_desc}}{GREEN}{'Скорость':<{w_speed}}{RESET}Подсказка"
+    print(header)
+    print(f"{CYAN}{'-'*110}{RESET}")
+
     for n, name, desc, speed, hint in effects:
-        print(f"{BOLD}{n:<3}{RESET} {name:<15} {desc:<40} {speed:<12} {hint}")
-    print(f"{CYAN}{'='*90}{RESET}\n")
+        desc_lines = textwrap.wrap(desc, wrap_desc)
+        hint_lines = textwrap.wrap(hint, wrap_hint)
+        max_lines = max(len(desc_lines), len(hint_lines))
+        for i in range(max_lines):
+            num_str = f"{BOLD}{MAGENTA}{n:<{w_num}}{RESET}" if i == 0 else " "*w_num
+            name_str = f"{CYAN}{name:<{w_name}}{RESET}" if i == 0 else " "*w_name
+            desc_str = f"{YELLOW}{desc_lines[i]:<{w_desc}}{RESET}" if i < len(desc_lines) else " "*w_desc
+            speed_str = f"{GREEN}{speed:<{w_speed}}{RESET}" if i == 0 else " "*w_speed
+            hint_str = f"{hint_lines[i]}" if i < len(hint_lines) else ""
+            print(f"{num_str}{name_str}{desc_str}{speed_str}{hint_str}")
+
+    print(f"{CYAN}{'='*110}{RESET}\n")
 
 # === Обработка одного изображения ===
 def process_single(image_path, n_colors, scale, blur_strength, mode):
@@ -376,12 +395,15 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
     duration = time.time() - start
     print(f"{GREEN}Кластеризация завершена за {duration:.2f} сек.{RESET}")
 
-    # Сохранение результатов (используем исходное имя + приписки)
+    # Формирование папки с новой системой имен
     base_name = os.path.splitext(os.path.basename(image_path))[0]
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    out_dir = os.path.join("output_minimal_art", f"{base_name}_{timestamp}")
+    # Новая структура: имя + время + c{colors}_b{blur}_m{mode}
+    out_dir_name = f"{base_name}_{timestamp}_c{n_colors}_b{blur_strength}_m{mode}"
+    out_dir = os.path.join("output_minimal_art", out_dir_name)
     os.makedirs(out_dir, exist_ok=True)
 
+    # Сохранение арта и палитры
     art_path = os.path.join(out_dir, f"{base_name}_minimal.png")
     Image.fromarray(quantized).save(art_path)
     palette_path = save_palette_image(palette, base_name, out_dir)
@@ -419,17 +441,13 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
         w0, h0 = orig.size
         orig = orig.resize((int(w0 * scale), int(h0 * scale)), Image.Resampling.LANCZOS)
     orig_np = np.array(orig)
-    # Если quantized имеет нестандартную форму (например mirror 2x2), подогнать высоту
     try:
-        # если размеры совпадают — просто склеим
         if orig_np.shape[0] == quantized.shape[0] and orig_np.shape[1] == quantized.shape[1]:
             combined = np.hstack((orig_np, quantized))
         else:
-            # подберём центрированный кадр quantized под размер оригинала (crop/resize)
             q_resized = cv2.resize(quantized, (orig_np.shape[1], orig_np.shape[0]), interpolation=cv2.INTER_AREA)
             combined = np.hstack((orig_np, q_resized))
     except Exception:
-        # на всякий случай — сохраняем только результат
         combined = quantized
 
     compare_path = os.path.join(out_dir, f"{base_name}_compare.png")
@@ -439,7 +457,44 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
     # Показываем палитру в терминале
     show_palette(palette)
 
-# === Главная логика приложения ===
+def parse_int_list(s: str, min_v: int, max_v: int):
+    """
+    Парсит строку вида "4,8,12", "0-3,5" или "all" в список уникальных int внутри [min_v,max_v].
+    Возвращает отсортированный список.
+    """
+    if not s:
+        return []
+
+    s = s.strip().lower()
+    if s == "all":
+        return list(range(min_v, max_v + 1))
+
+    vals = set()
+    for part in s.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            try:
+                a, b = part.split("-", 1)
+                a = int(a.strip())
+                b = int(b.strip())
+                if a > b:
+                    a, b = b, a
+                for v in range(a, b + 1):
+                    if min_v <= v <= max_v:
+                        vals.add(v)
+            except Exception:
+                continue
+        else:
+            try:
+                v = int(part)
+                if min_v <= v <= max_v:
+                    vals.add(v)
+            except Exception:
+                continue
+    return sorted(vals)
+
 def main():
     print(f"\n{BOLD}{BLUE}МИНИМАЛИСТИЧНЫЙ АРТ-ГЕНЕРАТОР{RESET}")
     print(f"{MAGENTA}{'=' * 40}{RESET}")
@@ -462,23 +517,56 @@ def main():
     else:
         image_paths = select_images_via_dialog(multi=True)
 
-    # Вывод выбранных файлов
-    if image_paths:
-        print(f"{CYAN}Выбран файл:{RESET} {', '.join(os.path.basename(p) for p in image_paths)}")
-    else:
+    if not image_paths:
         print(f"{RED}Файлы не выбраны. Выход.{RESET}")
         return
 
-    # Параметры
-    n_colors = ask_int("Количество цветов (2–32): ", 2, 32)
-    scale = ask_float("Масштаб (1 = оригинал, 0.5 = в 2 раза меньше): ", 0.1, 2)
-    blur_strength = ask_int("Размытие (0 = выкл, 1–5): ", 0, 5)
+    print(f"{CYAN}Выбрано:{RESET} {', '.join(os.path.basename(p) for p in image_paths)}")
 
-    mode = ask_int("Выберите тип (1–20): ", 1, 20)
+    # === ПАРАМЕТРЫ (списки) ===
+    ncolors_input = input(f"{YELLOW}Количество цветов (2–32), например: 4,8,12 или 4-12: {RESET}").strip()
+    n_colors_list = parse_int_list(ncolors_input, 2, 32)
+    if not n_colors_list:
+        print(f"{RED}Ни одного корректного значения для 'Количество цветов'. Выход.{RESET}")
+        return
 
-    # Обрабатываем каждый файл по очереди
+    scale = ask_float("Масштаб (1 = оригинал, 0.1–2.0): ", 0.1, 2.0)
+
+    blur_input = input(f"{YELLOW}Размытие (0–5), например: 0,1,2 или 0-3: {RESET}").strip()
+    blur_list = parse_int_list(blur_input, 0, 5)
+    if not blur_list:
+        print(f"{RED}Ни одного корректного значения для 'Размытие'. Выход.{RESET}")
+        return
+
+    modes_input = input(f"{YELLOW}Тип эффекта (1–20), например: 2,7,11,16 или 2-5: {RESET}").strip()
+    modes_list = parse_int_list(modes_input, 1, 20)
+    if not modes_list:
+        print(f"{RED}Ни одного корректного значения для 'Тип эффекта'. Выход.{RESET}")
+        return
+
+    # Информация перед запуском
+    total = len(image_paths) * len(n_colors_list) * len(blur_list) * len(modes_list)
+    print(f"\n{CYAN}Запустим {total} задач(и):{RESET}")
+    print(f" • Файлов: {len(image_paths)}")
+    print(f" • Цветов: {', '.join(map(str, n_colors_list))}")
+    print(f" • Размытие: {', '.join(map(str, blur_list))}")
+    print(f" • Типы: {', '.join(map(str, modes_list))}")
+    print(f" • Масштаб: {scale}\n")
+
+    # Обрабатываем все комбинации
     for path in image_paths:
-        process_single(path, n_colors, scale, blur_strength, mode)
+        for n_colors in n_colors_list:
+            for blur_strength in blur_list:
+                for mode in modes_list:
+                    print(f"\n{BOLD}{MAGENTA}▶ {os.path.basename(path)} — colors={n_colors}, blur={blur_strength}, mode={mode}{RESET}")
+                    try:
+                        process_single(path, n_colors, scale, blur_strength, mode)
+                    except Exception as e:
+                        # лог ошибки и продолжение
+                        print(f"\n{RED}[ОШИБКА при обработке]{RESET} {e}")
+                        import traceback
+                        traceback.print_exc()
+                        print(f"{YELLOW}Продолжаю со следующей комбинацией...{RESET}")
 
 if __name__ == "__main__":
     try:
