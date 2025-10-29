@@ -1,0 +1,5 @@
+# Игнорировать всё внутри
+output_minimal_art/*
+
+# Но не игнорировать саму папку и файл .gitkeep
+!output_minimal_art/.gitkeep
