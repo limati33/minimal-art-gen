@@ -10,6 +10,8 @@ import time
 import tkinter as tk
 from tkinter import filedialog
 from colorama import init, Fore, Style
+import math
+import random
 
 # === Инициализация цветов терминала ===
 init(autoreset=True)
@@ -85,7 +87,7 @@ def sort_palette(palette):
 # === Таблица эффектов с подсказками ===
 def show_effects_table():
     effects = [
-        (1,  "Постеризация",    "Чистое упрощение цветов, без фильтров.",               "Очень быстро", "Используй малое число цветов для графичных результатов"),
+        (1,  "Постеризация",    "Чистое упрощение цветов, без фильтров.",              "Очень быстро", "Используй малое число цветов для графичных результатов"),
         (2,  "Плавные пятна",   "Мягкие переходы, глянец.",                            "Средне",       "Подходит для портретов — увеличь bilateral для более плавного блеска"),
         (3,  "Комикс",          "Контуры + сглаженные пятна — рисунок тушью.",         "Средне",       "Уменьши резкость контуров, если слишком агрессивно"),
         (4,  "Бумага (Cutout)", "Вырезанные слои, неровные края (как мел/ножницы).",   "Средне",       "Подходит для силуэтов — попробуй разное порога Canny"),
@@ -101,7 +103,7 @@ def show_effects_table():
         (14, "Акварель",        "Мягкие растекающиеся переходы, как кисть и вода.",    "Медленно",     "Убираем резкие контуры, ставим сильный edge-preserve + blur"),
         (15, "Технический",     "Чертёж: белые линии на синем фоне (blueprint).",      "Очень быстро", "Линии — белые, фон — синий; инвертируем каналы правильно"),
         (16, "Карта",           "Топографическая палитра — уровни как карта высот.",   "Очень быстро", "Подходит для пейзажей/спутника"),
-        (17, "Зеркало",         "Зеркальные отражения — симметрии по осям.",           "Очень быстро", "Генерирует вертикаль/горизонталь/диагонали одновременно"),
+        (17, "Мозаика",         "Набор случайных фигур в сетке.",                      "Среднее",      "Чем больше клеток — тем плотнее мозаика"),
         (18, "Сон",             "Плывущая, слегка искажённая структура.",              "Медленно",     "Искажения случайны — будут разные каждый раз"),
         (19, "Пиксель-Арт",     "Чистая пикселизация (ретро).",                        "Очень быстро", "scale_factor ~0.05..0.2"),
         (20, "Огненный",        "Тёплое свеча/пламя — мягкий glow в тёплых тонах.",    "Средне",       "Glow делается по яркостной маске, не просто контраст"),
@@ -289,13 +291,114 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
         if cmap is None:
             cmap = cv2.COLORMAP_JET
         quantized = cv2.applyColorMap(gray8, cmap)
+
+    #-----------------
     elif mode == 17:
+        def rotate_pts(pts, angle, cx, cy):
+            ca = math.cos(angle); sa = math.sin(angle)
+            out = []
+            for (x, y) in pts:
+                rx = x - cx; ry = y - cy
+                nx = rx * ca - ry * sa + cx
+                ny = rx * sa + ry * ca + cy
+                out.append((int(round(nx)), int(round(ny))))
+            return out
+
         hq, wq = quantized.shape[:2]
-        v = quantized[:, ::-1]
-        h_flip = quantized[::-1, :]
-        top = np.hstack((quantized, v))
-        bottom = np.hstack((h_flip, cv2.flip(v, 0)))
-        quantized = np.vstack((top, bottom))
+        larger = max(wq, hq)
+        desired_cell = 8  # базовый желаемый размер клетки в пикселях
+        base = max(1, desired_cell)  # минимальный размер клетки = 1 пиксель
+
+        cols = int(np.ceil(wq / base))
+        rows = int(np.ceil(hq / base))
+
+
+        abstract = np.zeros_like(quantized)
+        shapes = ["circle", "square", "triangle", "diamond", "pentagon"]
+
+        # Сначала рисуем сетку
+        grid_color = (50, 50, 50)  # цвет линий сетки (темный)
+        for r in range(rows+1):
+            y = min(hq-1, r*base)
+            cv2.line(abstract, (0, y), (wq-1, y), grid_color, 1)
+        for c in range(cols+1):
+            x = min(wq-1, c*base)
+            cv2.line(abstract, (x, 0), (x, hq-1), grid_color, 1)
+
+        # Затем заполняем клетки фигурами
+        for ry in range(rows):
+            for cx in range(cols):
+                x0 = cx * base
+                y0 = ry * base
+                x1 = min(wq, (cx+1)*base)
+                y1 = min(hq, (ry+1)*base)
+                bw, bh = x1-x0, y1-y0
+                if bw <=0 or bh <=0:
+                    continue
+
+                block = quantized[y0:y1, x0:x1]
+                mean_col = tuple(map(int, block.mean(axis=(0,1)).astype(int)))
+
+                # Цвет фигуры контрастный к среднему
+                lum = 0.299*mean_col[0] + 0.587*mean_col[1] + 0.114*mean_col[2]
+                delta = int(max(20, min(80, min(255, 128 - (lum - 128)))))
+                if lum > 130:
+                    shape_col = (max(0, mean_col[0]-delta), max(0, mean_col[1]-delta), max(0, mean_col[2]-delta))
+                else:
+                    shape_col = (min(255, mean_col[0]+delta), min(255, mean_col[1]+delta), min(255, mean_col[2]+delta))
+
+                # Выбор фигуры
+                shape = random.choice(shapes)
+                cx_px = x0 + bw//2
+                cy_px = y0 + bh//2
+                scale = random.uniform(1.0, 1.25)
+
+                if shape == "circle":
+                    rx = int((bw/2)*scale)
+                    ry_ = int((bh/2)*scale)
+                    cv2.ellipse(abstract, (cx_px, cy_px), (max(1,rx), max(1,ry_)), 0, 0, 360, shape_col, -1)
+                else:
+                    hw = (bw/2)*scale
+                    hh = (bh/2)*scale
+                    if shape == "square":
+                        pts = [(cx_px-hw, cy_px-hh), (cx_px+hw, cy_px-hh),
+                               (cx_px+hw, cy_px+hh), (cx_px-hw, cy_px+hh)]
+                    elif shape == "diamond":
+                        pts = [(cx_px, cy_px-hh), (cx_px+hw, cy_px), (cx_px, cy_px+hh), (cx_px-hw, cy_px)]
+                    elif shape == "triangle":
+                        pts = [(cx_px, cy_px-hh), (cx_px-hw, cy_px+hh), (cx_px+hw, cy_px+hh)]
+                    elif shape == "pentagon":
+                        pts = []
+                        sides = 5
+                        for i in range(sides):
+                            ang = 2*math.pi*i/sides - math.pi/2
+                            px = cx_px + math.cos(ang)*hw
+                            py = cy_px + math.sin(ang)*hh
+                            pts.append((px, py))
+                    else:
+                        pts = [(cx_px-hw, cy_px-hh), (cx_px+hw, cy_px-hh),
+                               (cx_px+hw, cy_px+hh), (cx_px-hw, cy_px+hh)]
+
+                    angle = random.uniform(-0.35, 0.35)
+                    pts_rot = rotate_pts(pts, angle, cx_px, cy_px)
+                    poly = np.array(pts_rot, dtype=np.int32)
+
+                    area = abs(cv2.contourArea(poly))
+                    if area < 4:
+                        r = max(1, int(min(bw,bh)*0.25))
+                        cv2.circle(abstract, (cx_px, cy_px), r, shape_col, -1)
+                    else:
+                        cv2.fillConvexPoly(abstract, poly, shape_col)
+
+        # Лёгкая зернистость
+        if max(hq, wq) > 200:
+            noise = (np.random.randn(hq, wq, 1) * 6).astype(np.int16)
+            abstract = np.clip(abstract.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+
+        quantized = abstract
+
+    #----------------- 
+
     elif mode == 18:
         offset = max(4, int(min(w,h) * 0.01))
         warped = np.zeros_like(quantized)
@@ -339,7 +442,7 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
 
     mode_names = {1:"Постеризация",2:"Плавные пятна",3:"Комикс",4:"Бумага",5:"Сетка",6:"Пыль",
                   7:"Мел",8:"Разбитое стекло",9:"Пластик",10:"Неон",11:"Хром",12:"Свеча",
-                  13:"Мох",14:"Акварель",15:"Технический",16:"Карта",17:"Зеркало",18:"Сон",
+                  13:"Мох",14:"Акварель",15:"Технический",16:"Карта",17:"Мозаика",18:"Сон",
                   19:"Пиксель-Арт",20:"Огненный"}
     txt_path = os.path.join(out_dir, f"{base_name}_settings.txt")
     with open(txt_path, "w", encoding="utf-8") as f:
