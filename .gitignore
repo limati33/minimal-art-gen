@@ -2,3 +2,5 @@ output_minimal_art/*
 !output_minimal_art/.gitkeep
 *.bat
 *.log
+logs/
+__pycache__/
