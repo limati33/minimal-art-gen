@@ -8,6 +8,7 @@ from utils.ui_utils import select_images_via_dialog
 from utils.effects_table import show_effects_table
 from processor.single_image import process_single
 from colorama import Fore, Style
+from processor.effects import EFFECTS
 
 # Цвета
 RESET = Style.RESET_ALL
@@ -51,8 +52,8 @@ def main():
     
     print(f"{CYAN}Выбрано:{RESET} {', '.join(os.path.basename(p) for p in image_paths)}")
     
-    ncolors_input = input(f"{YELLOW}Количество цветов (2–32), например: 4,8,12 или 4-12 или (all): {RESET}").strip()
-    n_colors_list = parse_int_list(ncolors_input, 2, 32)
+    ncolors_input = input(f"{YELLOW}Количество цветов (2–128), например: 4,8,12 или 4-12 или (all): {RESET}").strip()
+    n_colors_list = parse_int_list(ncolors_input, 2, 128)
     if not n_colors_list:
         print(f"{RED}Ни одного корректного значения для 'Количество цветов'. Выход.{RESET}")
         return
@@ -65,8 +66,12 @@ def main():
         print(f"{RED}Ни одного корректного значения для 'Размытие'. Выход.{RESET}")
         return
     
-    modes_input = input(f"{YELLOW}Тип эффекта (1–20), например: 2,7,11,16 или 2-5 или (all): {RESET}").strip()
-    modes_list = parse_int_list(modes_input, 1, 20)
+    # Автоматическое определение диапазона эффектов
+    max_mode = max(EFFECTS.keys())
+
+    modes_input = input(f"{YELLOW}Тип эффекта (1–{max_mode}), например: 2,7,11,16 или 2-5 или (all): {RESET}").strip()
+    modes_list = parse_int_list(modes_input, 1, max_mode)
+
     if not modes_list:
         print(f"{RED}Ни одного корректного значения для 'Тип эффекта'. Выход.{RESET}")
         return

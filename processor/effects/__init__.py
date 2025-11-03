@@ -19,6 +19,7 @@ from .mode_17_mosaic import apply_mosaic
 from .mode_18_dream import apply_dream
 from .mode_19_pixel import apply_pixel
 from .mode_20_fire import apply_fire
+from .mode_21_xray import apply_xray
 
 
 EFFECTS = {
@@ -42,6 +43,7 @@ EFFECTS = {
     18: apply_dream,
     19: apply_pixel,
     20: apply_fire,
+    21: apply_xray,
 }
 
 

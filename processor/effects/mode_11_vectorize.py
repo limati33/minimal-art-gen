@@ -1,43 +1,37 @@
 # processor/effects/mode_11_vectorize.py
 import cv2
 import numpy as np
-from skimage.segmentation import slic, find_boundaries
+from skimage.segmentation import slic
+from skimage.color import rgb2lab, lab2rgb
 
 def apply_vectorize(img, w, h, out_dir, base_name):
-    """
-    Минималистичная векторизация (плоский арт).
-    Возвращает uint8 RGB изображение (h, w, 3).
-
-    - Автоматически подбирает число суперпикселей и цветов по размеру входа.
-    - Использует SLIC для аккуратного выделения областей, затем KMeans на средних цветах сегментов.
-    - Рисует чёрные контуры по границам сегментов (толщину можно менять).
-    """
-
-    # --- Параметры (можно подправить) ---
-    # Авточисло сегментов в зависимости от площади
+    # ----------------- ПАРАМЕТРЫ (подстрой под вкус) -----------------
     area = max(1, int(w) * int(h))
-    n_segments = int(np.clip(area / 1500, 100, 1000))   # примерно: 100..1000 сегментов
-    compactness = 12.0                                  # компактность SLIC (форма vs цвет)
-    n_colors = int(np.clip(n_segments / 50, 4, 12))     # количество итоговых цветов (4..12)
-    line_thickness = 1                                  # толщина контура (px). повысь для грубых линий
+    n_segments = int(np.clip(area / 1200, 120, 1200))   # чем меньше — тем крупнее пятна
+    compactness = 10.0                                  # 5..20 — влияет на форму сегментов
+    # сколько итоговых цветов желаем примерно (будет адаптировано под сегменты)
+    target_colors = int(np.clip(n_segments // 40, 4, 64))
+    # минимальный размер сегмента (в пикселях). Мелкие сегменты будут поглощены соседями
+    small_seg_threshold = int(np.clip(area / 5000, 20, 800))
+    # постобработка медианой: 0 — отключено, 3..7 — мягкое сглаживание
+    median_blur_ksize = 3
+    # ----------------------------------------------------------------
 
-    # Убедимся, что img — RGB uint8 и размеры совпадают
     if img is None:
         raise ValueError("apply_vectorize: img is None")
+
     img_h, img_w = img.shape[:2]
     if (img_w, img_h) != (w, h):
-        # если переданные w,h не совпадают с реальными — используем реальные
         w, h = img_w, img_h
 
-    # --- 1) Сглаживаем (убираем мелкие текстуры) ---
-    # Bilateral даёт хороший баланс—сохраняет края
+    # Немного сгладим исходник (убираем мелкие текстуры, сохраняем границы)
     blur = cv2.bilateralFilter(img, d=9, sigmaColor=75, sigmaSpace=75)
 
-    # SLIC ожидает float image в диапазоне [0,1]
+    # SLIC ожидает float [0..1]
     blur_float = np.clip(blur.astype(np.float32) / 255.0, 0.0, 1.0)
 
+    # 1) SLIC: суперпиксели
     try:
-        # --- 2) SLIC: суперпиксели ---
         segments = slic(
             blur_float,
             n_segments=n_segments,
@@ -46,71 +40,87 @@ def apply_vectorize(img, w, h, out_dir, base_name):
             start_label=0
         ).astype(np.int32)
     except Exception:
-        # Если SLIC по какой-то причине упал (редко), fallback — простой уменьшенный SLIC-подобный подход:
-        # используем классический kmeans на всей картинке (медленнее/грубее).
-        Z = blur.reshape((-1, 3)).astype(np.float32)
-        Kf = max(4, min(12, n_colors))
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.5)
-        _, labels_full, centers_full = cv2.kmeans(Z, Kf, None, criteria, 5, cv2.KMEANS_RANDOM_CENTERS)
-        centers_full = np.uint8(centers_full)
-        quant_full = centers_full[labels_full.flatten()].reshape((img_h, img_w, 3))
-        # Возвращаем результат (быстрый вариант)
-        return quant_full
+        # На случай проблем — fallback: просто вернуть слегка размытый оригинал
+        return cv2.medianBlur(blur, 3)
 
-    # --- 3) Средний цвет для каждого сегмента ---
-    unique_labels = np.unique(segments)
-    n_segs_actual = unique_labels.size
-
-    # Быстро считать средние цвета: создаём массив и суммируем
-    seg_colors = np.zeros((n_segs_actual, 3), dtype=np.float64)
-    seg_counts = np.zeros((n_segs_actual,), dtype=np.int32)
-
-    # Берём значения из blur (uint8)
-    blur_uint8 = blur.reshape((-1, 3))
+    # 2) Переводим в LAB и готовим данные для bincount
+    lab = rgb2lab(blur_float)  # float in expected range
+    lab_flat = lab.reshape(-1, 3)
     seg_flat = segments.reshape(-1)
-    # Map label value -> index in unique_labels
-    label_to_index = {lab: idx for idx, lab in enumerate(unique_labels)}
-    indices = np.vectorize(label_to_index.get)(seg_flat)
-    for ch in range(3):
-        channel_vals = blur_uint8[:, ch].astype(np.float64)
-        # суммируем по сегментам
-        for idx in range(n_segs_actual):
-            mask_idx = (indices == idx)
-            if mask_idx.any():
-                seg_colors[idx, ch] = channel_vals[mask_idx].sum()
-        # (we will divide by counts below)
 
-    # посчитаем counts (делаем один проход, быстрее)
-    for idx in range(n_segs_actual):
-        seg_counts[idx] = np.count_nonzero(indices == idx)
-    # избегаем деления на ноль
-    seg_counts_safe = np.where(seg_counts == 0, 1, seg_counts)
-    seg_colors = (seg_colors.T / seg_counts_safe).T
-    seg_colors = np.clip(seg_colors, 0, 255).astype(np.uint8)  # (n_segs_actual, 3)
+    # Получаем компактные индексы сегментов 0..N-1
+    unique_labels, inverse = np.unique(seg_flat, return_inverse=True)
+    n_segs_actual = unique_labels.size
+    inv = inverse  # индекс каждого пикселя в 0..n_segs_actual-1
 
-    # --- 4) KMeans на средних цветах сегментов (чтобы сократить палитру) ---
-    Z_segs = seg_colors.astype(np.float32)
-    K = max(2, min(12, n_colors))
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.5)
-    # cv2.kmeans ожидает non-empty and proper shape
-    if Z_segs.shape[0] <= K:
-        # слишком мало сегментов — просто используем seg_colors как палитру
-        centers = Z_segs
-        seg_to_center_labels = np.arange(Z_segs.shape[0], dtype=np.int32)
+    # 3) Средний цвет (LAB) для каждого сегмента — через bincount (быстро)
+    counts = np.bincount(inv)
+    counts_safe = np.where(counts == 0, 1, counts).astype(np.float64)
+
+    sums_L = np.bincount(inv, weights=lab_flat[:, 0])
+    sums_a = np.bincount(inv, weights=lab_flat[:, 1])
+    sums_b = np.bincount(inv, weights=lab_flat[:, 2])
+
+    seg_means_lab = np.vstack((sums_L / counts_safe,
+                               sums_a / counts_safe,
+                               sums_b / counts_safe)).T  # (n_segs_actual, 3)
+
+    # 4) Уменьшаем палитру (опционально) — простой kmeans если сегментов много
+    # если сегментов мало — берём seg_means как есть
+    from cv2 import kmeans as cv2_kmeans
+    Z = seg_means_lab.astype(np.float32)
+    K = min(max(2, target_colors), n_segs_actual)
+    if n_segs_actual > K:
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.5)
+        _, labels_centers, centers = cv2_kmeans(Z, K, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
+        labels_centers = labels_centers.flatten()
+        centers = centers.astype(np.float32)
     else:
-        _, seg_to_center_labels, centers = cv2.kmeans(Z_segs, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-        seg_to_center_labels = seg_to_center_labels.flatten()
-        centers = np.uint8(centers)
+        # мало сегментов — каждая своя палитра
+        labels_centers = np.arange(n_segs_actual, dtype=np.int32)
+        centers = Z.astype(np.float32)
 
-    # Для каждого сегмента — цвет из centers
-    centers_per_segment = centers[seg_to_center_labels]  # (n_segs_actual, 3) if kmeans used, otherwise appropriate
+    # centers (LAB) -> цвет для каждого сегмента (по метке labels_centers)
+    centers_per_segment_lab = centers[labels_centers]
 
-    # --- 5) Собираем плоское изображение: для каждого пикселя — цвет своего сегмента ---
-    # построим index_map: для каждый пикселя — индекс сегмента в 0..n_segs_actual-1
-    index_map = np.zeros_like(segments, dtype=np.int32)
-    for i, lab in enumerate(unique_labels):
-        index_map[segments == lab] = i
-    flat = centers_per_segment[index_map]  # shape (h, w, 3)
-    flat = np.ascontiguousarray(flat.astype(np.uint8))
+    # 5) Слияние мелких сегментов: если сегмент меньше threshold, берём
+    # наиболее частый сосед (по 3x3 окрестности) и присваиваем ему цвет.
+    if small_seg_threshold > 0:
+        inv_map = inv.reshape(h, w)  # индекс сегмента (0..n_segs_actual-1) для каждого пикселя
+        seg_sizes = counts  # уже вычислены
+        small_ids = np.where(seg_sizes < small_seg_threshold)[0]
+        if small_ids.size:
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            # inv_map uint32 for bincount
+            inv_map_u32 = inv_map.astype(np.int32)
+            for sid in small_ids:
+                # строим маску малого сегмента
+                mask = (inv_map_u32 == sid).astype(np.uint8)
+                if mask.sum() == 0:
+                    continue
+                # расширяем область и берём соседние сегменты
+                dil = cv2.dilate(mask, kernel, iterations=2).astype(np.bool_)
+                border_mask = dil & (~(mask.astype(bool)))
+                if not np.any(border_mask):
+                    continue
+                neighbor_indices = inv_map_u32[border_mask]
+                # частотный сосед
+                new_sid = np.bincount(neighbor_indices).argmax()
+                # присвоим цвет этому маленькому сегменту — просто переназначим его центр
+                centers_per_segment_lab[sid] = centers_per_segment_lab[new_sid]
+                # не меняем inv_map сам — достаточно изменить цвет сегмента
+                # (поскольку в финале мы окрашиваем по index -> centers_per_segment_lab)
+    
+    # 6) Собираем итоговое изображение: для каждого пикселя берём цвет центра своего сегмента
+    final_lab_flat = centers_per_segment_lab[inv]  # shape (h*w, 3)
+    final_lab = final_lab_flat.reshape((h, w, 3))
 
-    return flat
+    # Конвертация LAB->RGB (lab2rgb возвращает float 0..1)
+    final_rgb = lab2rgb(final_lab)
+    final_rgb_uint8 = np.clip((final_rgb * 255.0), 0, 255).astype(np.uint8)
+
+    # 7) Небольшая постобработка — медианный фильтр, чтобы убрать «пиксели»
+    if median_blur_ksize and median_blur_ksize >= 3 and median_blur_ksize % 2 == 1:
+        final_rgb_uint8 = cv2.medianBlur(final_rgb_uint8, median_blur_ksize)
+
+    return final_rgb_uint8
