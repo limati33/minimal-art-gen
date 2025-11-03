@@ -1,5 +1,4 @@
-output_minimal_art/*
-!output_minimal_art/.gitkeep
+output_minimal_art/
 *.bat
 *.log
 logs/

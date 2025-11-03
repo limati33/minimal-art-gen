@@ -9,7 +9,7 @@ from .mode_7_chalk import apply_chalk
 from .mode_8_ascii import apply_ascii
 from .mode_9_plastic import apply_plastic
 from .mode_10_neon import apply_neon
-from .mode_11_chrome import apply_chrome
+from .mode_11_vectorize import apply_vectorize
 from .mode_12_candle import apply_candle
 from .mode_13_hologram import apply_hologram
 from .mode_14_watercolor import apply_watercolor
@@ -32,7 +32,7 @@ EFFECTS = {
     8: apply_ascii,
     9: apply_plastic,
     10: apply_neon,
-    11: apply_chrome,
+    11: apply_vectorize,
     12: apply_candle,
     13: apply_hologram,
     14: apply_watercolor,
