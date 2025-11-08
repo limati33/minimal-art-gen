@@ -50,6 +50,12 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
         print_progress(3, prefix="Эффект... ")
         quantized = get_effect(mode)(quantized, w, h, out_dir, base_name)
 
+        # --- поддержка эффектов, возвращающих список изображений ---
+        if isinstance(quantized, list):
+            # Если эффект уже сам сохранил результаты — просто выходим
+            print(f"{YELLOW}Эффект вернул несколько изображений, сохранение пропущено.{RESET}")
+            return
+            
         print_progress(4, prefix="Сохранение... ")
         duration = time.time() - start_time
         art_path = os.path.join(out_dir, f"{base_name}_minimal.png")

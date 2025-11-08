@@ -8,7 +8,7 @@ from .mode_6_dust import apply_dust
 from .mode_7_chalk import apply_chalk
 from .mode_8_ascii import apply_ascii
 from .mode_9_plastic import apply_plastic
-from .mode_10_neon import apply_neon
+from .mode_10_graffiti import apply_graffiti
 from .mode_11_vectorize import apply_vectorize
 from .mode_12_candle import apply_candle
 from .mode_13_hologram import apply_hologram
@@ -20,7 +20,8 @@ from .mode_18_dream import apply_dream
 from .mode_19_pixel import apply_pixel
 from .mode_20_fire import apply_fire
 from .mode_21_xray import apply_xray
-
+from .mode_22_graph import apply_graph
+from .mode_23_censor import apply_censor
 
 EFFECTS = {
     1: apply_poster,
@@ -32,7 +33,7 @@ EFFECTS = {
     7: apply_chalk,
     8: apply_ascii,
     9: apply_plastic,
-    10: apply_neon,
+    10: apply_graffiti,
     11: apply_vectorize,
     12: apply_candle,
     13: apply_hologram,
@@ -44,6 +45,8 @@ EFFECTS = {
     19: apply_pixel,
     20: apply_fire,
     21: apply_xray,
+    22: apply_graph,
+    23: apply_censor,
 }
 
 
