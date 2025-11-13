@@ -21,7 +21,7 @@ from .mode_19_pixel import apply_pixel
 from .mode_20_fire import apply_fire
 from .mode_21_xray import apply_xray
 from .mode_22_graph import apply_graph
-from .mode_23_censor import apply_censor
+from .mode_23_vicecity import apply_vicecity
 
 EFFECTS = {
     1: apply_poster,
@@ -46,7 +46,7 @@ EFFECTS = {
     20: apply_fire,
     21: apply_xray,
     22: apply_graph,
-    23: apply_censor,
+    23: apply_vicecity,
 }
 
 
