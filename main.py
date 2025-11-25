@@ -7,8 +7,10 @@ from utils.input_utils import ask_int, ask_float, parse_int_list
 from utils.ui_utils import select_images_via_dialog
 from utils.effects_table import show_effects_table
 from processor.single_image import process_single
-from colorama import Fore, Style
+# Импортируем новый процессор
+from processor.video import process_video 
 from processor.effects import EFFECTS
+from colorama import Fore, Style
 
 # Цвета
 RESET = Style.RESET_ALL
@@ -20,109 +22,113 @@ RED = Fore.RED
 MAGENTA = Fore.MAGENTA
 BLUE = Fore.BLUE
 
+VIDEO_EXTENSIONS = {'.mp4', '.avi', '.mov', '.mkv', '.webm', '.flv', '.wmv'}
+
+def is_video(path):
+    _, ext = os.path.splitext(path)
+    return ext.lower() in VIDEO_EXTENSIONS
+
 def main():
-    print(f"\n{BOLD}{BLUE}МИНИМАЛИСТИЧНЫЙ АРТ-ГЕНЕРАТОР{RESET}")
+    print(f"\n{BOLD}{BLUE}МИНИМАЛИСТИЧНЫЙ АРТ-ГЕНЕРАТОР (ФОТО + ВИДЕО){RESET}")
     print(f"{MAGENTA}{'=' * 40}{RESET}")
     show_effects_table()
     
     args = sys.argv[1:]
-    image_paths = []
+    input_paths = []
+    
+    # --- Сбор файлов ---
     if args:
         for a in args:
             resolved = resolve_shortcut(a)
             if os.path.isfile(resolved):
-                image_paths.append(resolved)
+                input_paths.append(resolved)
             else:
                 print(f"{YELLOW}Внимание: '{a}' → не найден или не файл — пропущен.{RESET}")
-        if not image_paths:
-            print(f"{RED}Нет корректных файлов в аргументах.{RESET}")
-            return
     else:
         raw_paths = select_images_via_dialog(multi=True)
         for p in raw_paths:
             resolved = resolve_shortcut(p)
             if os.path.isfile(resolved):
-                image_paths.append(resolved)
+                input_paths.append(resolved)
             else:
-                print(f"{YELLOW}Пропущен (не файл): {p}{RESET}")
+                print(f"{YELLOW}Пропущен: {p}{RESET}")
     
-    if not image_paths:
+    if not input_paths:
         print(f"{RED}Файлы не выбраны. Выход.{RESET}")
         return
     
-    print(f"{CYAN}Выбрано:{RESET} {', '.join(os.path.basename(p) for p in image_paths)}")
+    print(f"{CYAN}Выбрано:{RESET} {len(input_paths)} файл(ов)")
     
-    ncolors_input = input(f"{YELLOW}Количество цветов (2–128), например: 4,8,12 или 4-12 или (all): {RESET}").strip()
+    # --- Ввод параметров ---
+    ncolors_input = input(f"{YELLOW}Количество цветов (2–128) [Видео использует 1 значение]: {RESET}").strip()
     n_colors_list = parse_int_list(ncolors_input, 2, 128)
-    if not n_colors_list:
-        print(f"{RED}Ни одного корректного значения для 'Количество цветов'. Выход.{RESET}")
-        return
-    
+    if not n_colors_list: return
+
     scale = ask_float("Масштаб (1 = оригинал, 0.1–2.0): ", 0.1, 2.0)
     
-    blur_input = input(f"{YELLOW}Размытие (0–5), например: 0,1,2 или 0-3 или (all): {RESET}").strip()
+    blur_input = input(f"{YELLOW}Размытие (0–5) [Видео использует 1 значение]: {RESET}").strip()
     blur_list = parse_int_list(blur_input, 0, 5)
-    if not blur_list:
-        print(f"{RED}Ни одного корректного значения для 'Размытие'. Выход.{RESET}")
-        return
+    if not blur_list: return
     
-    # Автоматическое определение диапазона эффектов
     max_mode = max(EFFECTS.keys())
-
-    modes_input = input(f"{YELLOW}Тип эффекта (1–{max_mode}), например: 2,7,11,16 или 2-5 или (all): {RESET}").strip()
+    modes_input = input(f"{YELLOW}Тип эффекта (1–{max_mode}): {RESET}").strip()
     modes_list = parse_int_list(modes_input, 1, max_mode)
-
-    if not modes_list:
-        print(f"{RED}Ни одного корректного значения для 'Тип эффекта'. Выход.{RESET}")
-        return
+    if not modes_list: return
     
-    total = len(image_paths) * len(n_colors_list) * len(blur_list) * len(modes_list)
-    print(f"\n{CYAN}Запустим {total} задач(и):{RESET}")
-    print(f" • Файлов: {len(image_paths)}")
-    print(f" • Цветов: {', '.join(map(str, n_colors_list))}")
-    print(f" • Размытие: {', '.join(map(str, blur_list))}")
-    print(f" • Типы: {', '.join(map(str, modes_list))}")
-    print(f" • Масштаб: {scale}\n")
+    # --- Запуск обработки ---
+    # Для простоты, если выбрано несколько параметров (цветов/размытия), 
+    # для видео мы берем только ПЕРВЫЙ параметр из списка, чтобы не генерировать 50 видеофайлов.
     
-    completed = 0
     start_time = time.time()
     
-    for idx_path, path in enumerate(image_paths, 1):
-        for idx_color, n_colors in enumerate(n_colors_list, 1):
-            for idx_blur, blur_strength in enumerate(blur_list, 1):
-                for idx_mode, mode in enumerate(modes_list, 1):
-                    completed += 1
-                    percent = completed / total * 100
-                    bar_len = 20
-                    filled = int(bar_len * completed // total)
-                    bar = f"{GREEN}{'█' * filled}{RESET}{'.' * (bar_len - filled)}"
-                    elapsed = time.time() - start_time
-                    avg_time = elapsed / completed if completed > 0 else 0
-                    eta = avg_time * (total - completed)
-                    mins, secs = divmod(int(eta), 60)
-                    eta_str = f"{mins} мин {secs} сек" if mins > 0 else f"{secs} сек"
-                    print(f"\r"
-                          f"{BLUE}Файл {idx_path}/{len(image_paths)} | "
-                          f"Цвета {idx_color}/{len(n_colors_list)} | "
-                          f"Размытие {idx_blur}/{len(blur_list)} | "
-                          f"Эффект {idx_mode}/{len(modes_list)}{RESET} | "
-                          f"{bar} {YELLOW}{percent:5.1f}%{RESET} | "
-                          f"{CYAN}{avg_time:.1f} сек/задача{RESET} | "
-                          f"{MAGENTA}ETA: {eta_str}{RESET}",
-                          end="", flush=True)
-                    
-                    print(f"\n\n{BOLD}{MAGENTA}> {os.path.basename(path)} — colors={n_colors}, blur={blur_strength}, mode={mode}{RESET}")
-                    
-                    try:
-                        process_single(path, n_colors, scale, blur_strength, mode)
-                    except Exception as e:
-                        print(f"\n{RED}[ОШИБКА] {e}{RESET}")
-                        log_error("Ошибка при обработке", e, path, n_colors, blur_strength, mode)
-                        print(f"{YELLOW}Пропускаем...{RESET}")
-    
+    for idx_path, path in enumerate(input_paths, 1):
+        print(f"\n{BOLD}{BLUE}>>> Файл {idx_path}/{len(input_paths)}: {os.path.basename(path)}{RESET}")
+        
+        if is_video(path):
+            # --- ИЗМЕНЕННЫЙ БЛОК ДЛЯ ВИДЕО (с перебором вариантов) ---
+            
+            # Подсчет общего количества видео-задач
+            total_v_tasks = len(n_colors_list) * len(blur_list) * len(modes_list)
+            current_v_task = 0
+
+            print(f"{MAGENTA}Режим ВИДЕО: Запланировано {total_v_tasks} вариант(а/ов).{RESET}")
+            print(f"{YELLOW}ВНИМАНИЕ: Обработка видео долгая. Наберитесь терпения.{RESET}")
+
+            # Запускаем циклы перебора (как для фото)
+            for n_colors in n_colors_list:
+                for blur_strength in blur_list:
+                    for mode in modes_list:
+                        current_v_task += 1
+                        print(f"\n{BOLD}{CYAN}>>> Видео-вариант {current_v_task}/{total_v_tasks}{RESET}")
+                        print(f"Параметры: Цветов={n_colors}, Размытие={blur_strength}, Эффект={mode}")
+                        
+                        try:
+                            # Передаем текущие параметры из цикла
+                            process_video(path, n_colors, scale, blur_strength, mode)
+                        except Exception as e:
+                            print(f"{RED}Ошибка видео: {e}{RESET}")
+                            log_error("Ошибка видео", e, path, n_colors, blur_strength, mode)
+                
+        else:
+            # Обработка ФОТО (перебор всех комбинаций, как и раньше)
+            # Считаем задачи только для текущего файла
+            local_tasks = len(n_colors_list) * len(blur_list) * len(modes_list)
+            completed_local = 0
+            
+            for n_colors in n_colors_list:
+                for blur_strength in blur_list:
+                    for mode in modes_list:
+                        completed_local += 1
+                        print(f"\n{MAGENTA}> Фото-арт {completed_local}/{local_tasks}: C={n_colors} B={blur_strength} M={mode}{RESET}")
+                        try:
+                            process_single(path, n_colors, scale, blur_strength, mode)
+                        except Exception as e:
+                            print(f"{RED}[Ошибка] {e}{RESET}")
+                            log_error("Ошибка фото", e, path, n_colors, blur_strength, mode)
+
     total_time = time.time() - start_time
     mins, secs = divmod(int(total_time), 60)
-    print(f"\n\n{GREEN}ГОТОВО!{RESET} Обработано {total} задач за {mins} мин {secs} сек.")
+    print(f"\n\n{GREEN}ВСЕ ЗАДАЧИ ВЫПОЛНЕНЫ!{RESET} ({mins} мин {secs} сек)")
 
 if __name__ == "__main__":
     main()
