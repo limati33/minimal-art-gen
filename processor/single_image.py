@@ -15,16 +15,19 @@ from utils.logging_utils import (
 from processor.effects import get_effect
 
 
-def process_single(image_path, n_colors, scale, blur_strength, mode):
-    path = resolve_shortcut(image_path)
-    base_name = os.path.splitext(os.path.basename(path))[0]
-    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
-    out_dir = os.path.join(
-        OUTPUT_DIR, f"{base_name}_{timestamp}_c{n_colors}_b{blur_strength}_m{mode}"
-    )
-    os.makedirs(out_dir, exist_ok=True)
-
+def process_single(image_path, n_colors, scale, blur_strength, mode, out_dir=None, return_report=True):
+    """
+    Обрабатывает одиночное изображение, сохраняет результат, палитру и отчёт.
+    Возвращает словарь (интерфейс совпадает с process_video, где применимо).
+    """
     try:
+        path = resolve_shortcut(image_path)
+        base_name = os.path.splitext(os.path.basename(path))[0]
+        timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+        if out_dir is None:
+            out_dir = os.path.join(OUTPUT_DIR, f"{base_name}_{timestamp}_c{n_colors}_b{blur_strength}_m{mode}")
+        os.makedirs(out_dir, exist_ok=True)
+
         print_progress(1, prefix="Загрузка... ")
         start_time = time.time()
         img_pil = Image.open(path).convert("RGB")
@@ -49,50 +52,64 @@ def process_single(image_path, n_colors, scale, blur_strength, mode):
 
         print_progress(3, prefix="Эффект... ")
         quantized = get_effect(mode)(quantized, w, h, out_dir, base_name)
-
-        # --- поддержка эффектов, возвращающих список изображений ---
         if isinstance(quantized, list):
-            # Если эффект уже сам сохранил результаты — просто выходим
+            # если эффект сохранил сам — считаем что он уже сделал работу
             print(f"{YELLOW}Эффект вернул несколько изображений, сохранение пропущено.{RESET}")
-            return
-            
+            return {
+                "out_path": None,
+                "palette_path": None,
+                "report_path": None,
+                "duration": 0.0,
+                "bitrate_kbps": None,
+                "processed_frames": 0,
+                "peak_mem_mb": None
+            }
+
         print_progress(4, prefix="Сохранение... ")
         duration = time.time() - start_time
         art_path = os.path.join(out_dir, f"{base_name}_minimal.png")
         Image.fromarray(quantized).save(art_path)
 
-        # Сохранение палитры
         palette_path = save_palette_image(palette, base_name, out_dir)
+        compare_path = create_compare(path, art_path, out_dir, base_name)
 
-        # Создание compare
-        create_compare(path, art_path, out_dir, base_name)
-
-        # Создание текстового отчёта
-        report_path = os.path.join(out_dir, f"{base_name}_report.txt")
-        with open(report_path, "w", encoding="utf-8") as f:
-            f.write("=== Минималистичный арт-генератор ===\n")
-            f.write(f"Исходный файл: {path}\n")
-            f.write(f"Дата: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-            f.write(f"Количество цветов: {n_colors}\n")
-            f.write(f"Масштаб: {scale}\n")
-            f.write(f"Размытие: {blur_strength}\n")
-            f.write(f"Тип: {EFFECT_NAMES.get(mode, 'Неизвестно')}\n")
-            f.write(f"Время выполнения: {duration:.2f} сек\n\n")
-            f.write("Палитра (RGB):\n")
-            for color in palette:
-                f.write(f" {tuple(color)}\n")
+        report_path = None
+        if return_report:
+            report_path = os.path.join(out_dir, f"{base_name}_report.txt")
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write("=== Минималистичный арт-генератор ===\n")
+                f.write(f"Исходный файл: {path}\n")
+                f.write(f"Дата: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                f.write(f"Количество цветов: {n_colors}\n")
+                f.write(f"Масштаб: {scale}\n")
+                f.write(f"Размытие: {blur_strength}\n")
+                f.write(f"Тип: {EFFECT_NAMES.get(mode, 'Неизвестно')}\n")
+                f.write(f"Время выполнения: {duration:.2f} сек\n\n")
+                f.write("Палитра (RGB):\n")
+                for color in palette:
+                    f.write(f" {tuple(int(c) for c in color)}\n")
 
         print_progress(5, prefix="Готово! ")
         print(f"\n{GREEN}Сохранено:{RESET}")
         print(f" Результат: {art_path}")
         print(f" Палитра: {palette_path}")
         print(f" Отчёт: {report_path}")
-        print(f" Сравнение: {os.path.join(out_dir, f'{base_name}_compare.png')}")
-        show_palette(palette)
+        print(f" Сравнение: {compare_path}")
+
+        return {
+            "out_path": art_path,
+            "palette_path": palette_path,
+            "report_path": report_path,
+            "duration": duration,
+            "bitrate_kbps": None,
+            "processed_frames": 1,
+            "peak_mem_mb": None
+        }
 
     except Exception as e:
-        log_error("process_single", e, image_path, n_colors, blur_strength, mode)
-        raise
+        log_error("process_single", str(e), image_path, n_colors, blur_strength, mode)
+        return {"error": str(e)}
+
 
 
 def create_compare(original_path, result_path, out_dir, base_name):

@@ -58,6 +58,8 @@ def main():
         return
     
     print(f"{CYAN}Выбрано:{RESET} {len(input_paths)} файл(ов)")
+    for i, p in enumerate(input_paths, 1):
+        print(f"  {i}. {os.path.basename(p)}")
     
     # --- Ввод параметров ---
     ncolors_input = input(f"{YELLOW}Количество цветов (2–128) [Видео использует 1 значение]: {RESET}").strip()

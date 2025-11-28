@@ -9,7 +9,7 @@ from utils.input_utils import print_progress
 from utils.logging_utils import (
     OUTPUT_DIR, GREEN, RESET, YELLOW,
     EFFECT_NAMES,
-    log_error
+    log_error # <<< ДОБАВЛЕНО для исправления NameError
 )
 from utils.palette_utils import save_palette_image
 from processor.effects import get_effect
@@ -131,7 +131,11 @@ def process_video(video_path, n_colors, scale, blur_strength, mode):
             quantized = palette[labels].reshape(frame.shape)
 
             # 4. Эффект
-            art_frame = get_effect(mode)(quantized, new_w, new_h, out_dir, f"frame_{processed_count}")
+            # УНИФИКАЦИЯ ИНТЕРФЕЙСА: передаем n_colors, blur_strength, mode
+            art_frame = get_effect(mode)(
+                quantized, new_w, new_h, out_dir, f"frame_{processed_count}",
+                n_colors=n_colors, blur_strength=blur_strength, mode=mode 
+            )
             
             # Если эффект вернул что-то странное (список), берем первый элемент
             if isinstance(art_frame, list):
