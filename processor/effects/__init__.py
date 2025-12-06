@@ -2,13 +2,13 @@
 from .mode_1_poster import apply_poster
 from .mode_2_smooth import apply_smooth
 from .mode_3_comic import apply_comic
-from .mode_4_paper import apply_paper
+from .mode_4_inkoutline import apply_inkoutline
 from .mode_5_grid import apply_grid
 from .mode_6_dust import apply_dust
 from .mode_7_chalk import apply_chalk
 from .mode_8_ascii import apply_ascii
 from .mode_9_plastic import apply_plastic
-from .mode_10_graffiti import apply_graffiti
+from .mode_10_retrolcd import apply_retrolcd
 from .mode_11_vectorize import apply_vectorize
 from .mode_12_candle import apply_candle
 from .mode_13_hologram import apply_hologram
@@ -23,18 +23,18 @@ from .mode_21_xray import apply_xray
 from .mode_22_graph import apply_graph
 from .mode_23_vicecity import apply_vicecity
 from .mode_24_tvbox import apply_tvbox
-
+from .mode_25_limbo import apply_stainedglass
 EFFECTS = {
     1: apply_poster,
     2: apply_smooth,
     3: apply_comic,
-    4: apply_paper,
+    4: apply_inkoutline,
     5: apply_grid,
     6: apply_dust,
     7: apply_chalk,
     8: apply_ascii,
     9: apply_plastic,
-    10: apply_graffiti,
+    10: apply_retrolcd,
     11: apply_vectorize,
     12: apply_candle,
     13: apply_hologram,
@@ -49,6 +49,7 @@ EFFECTS = {
     22: apply_graph,
     23: apply_vicecity,
     24: apply_tvbox,
+    25: apply_stainedglass,
 }
 
 

@@ -18,14 +18,17 @@ from processor.effects import get_effect
 def process_single(image_path, n_colors, scale, blur_strength, mode, out_dir=None, return_report=True):
     """
     Обрабатывает одиночное изображение, сохраняет результат, палитру и отчёт.
+    Если n_colors is None -> автоматически определяет количество цветов по выборке.
     Возвращает словарь (интерфейс совпадает с process_video, где применимо).
     """
     try:
         path = resolve_shortcut(image_path)
         base_name = os.path.splitext(os.path.basename(path))[0]
         timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+        # В имени папки безопасно подставляем строковое представление n_colors
+        n_colors_label = "nolimit" if n_colors is None else str(n_colors)
         if out_dir is None:
-            out_dir = os.path.join(OUTPUT_DIR, f"{base_name}_{timestamp}_c{n_colors}_b{blur_strength}_m{mode}")
+            out_dir = os.path.join(OUTPUT_DIR, f"{base_name}_{timestamp}_c{n_colors_label}_b{blur_strength}_m{mode}")
         os.makedirs(out_dir, exist_ok=True)
 
         print_progress(1, prefix="Загрузка... ")
@@ -41,8 +44,58 @@ def process_single(image_path, n_colors, scale, blur_strength, mode, out_dir=Non
             k = (blur_strength * 2 + 1) | 1
             img = cv2.GaussianBlur(img, (k, k), 0)
 
+        # --- Если режим "no limit", быстро считаем число уникальных цветов по выборке ---
+        if n_colors is None:
+            # Работать с uint8 — быстро и экономно по памяти
+            flat_uint8 = img.reshape(-1, 3)
+            total_pixels = flat_uint8.shape[0]
+
+            # Размер выборки: не больше 200k пикселей
+            sample_limit = 200_000
+            if total_pixels > sample_limit:
+                rng = np.random.default_rng(42)
+                # выборка индексов без повторений
+                idx = rng.choice(total_pixels, size=sample_limit, replace=False)
+                sample = flat_uint8[idx]
+                sample_size = sample_limit
+            else:
+                sample = flat_uint8
+                sample_size = total_pixels
+
+            # Считаем уникальные цвета в выборке
+            try:
+                unique_colors = np.unique(sample, axis=0)
+                unique_count = unique_colors.shape[0]
+            except Exception:
+                # На всякий случай fallback — считаем через Python set (медленнее, но надёжно)
+                tuples = [tuple(c) for c in sample]
+                unique_count = len(set(tuples))
+                unique_colors = None
+
+            # Ограничиваем диапазон (1..128). Если хотите минимум 2, поменяйте 1->2.
+            max_allowed = 128
+            n_colors_auto = max(1, min(unique_count, max_allowed))
+
+            print(f"{YELLOW}Авто-режим: по выборке {sample_size} пикселей найдено ~{unique_count} уникальных цветов; "
+                  f"будет использовано {n_colors_auto} цвет(ов).{RESET}")
+
+            # Присваиваем найденное число цветов для дальнейшей кластеризации
+            n_colors = n_colors_auto
+
+            # освобождаем временные объекты
+            del flat_uint8, sample
+            if 'unique_colors' in locals():
+                del unique_colors
+            gc.collect()
+
+        # --- Кластеризация ---
         print_progress(2, prefix=f"Кластеризация ({n_colors})... ")
         pixels = img.reshape(-1, 3).astype(np.float32)
+
+        # Безопасная проверка n_colors на случай неверных значений
+        if not isinstance(n_colors, int) or n_colors < 1:
+            n_colors = max(1, int(n_colors) if isinstance(n_colors, (int, float)) else 8)
+
         kmeans = MiniBatchKMeans(n_clusters=n_colors, batch_size=300_000, random_state=42)
         kmeans.fit(pixels)
         palette = np.uint8(kmeans.cluster_centers_)
@@ -107,9 +160,9 @@ def process_single(image_path, n_colors, scale, blur_strength, mode, out_dir=Non
         }
 
     except Exception as e:
-        log_error("process_single", str(e), image_path, n_colors, blur_strength, mode)
+        # Передаём сам объект исключения, чтобы log_error мог корректно читать exc.args
+        log_error("process_single", e, image_path, n_colors, blur_strength, mode)
         return {"error": str(e)}
-
 
 
 def create_compare(original_path, result_path, out_dir, base_name):

@@ -1,12 +1,8 @@
 # processor/effects/mode_24_tvbox.py
 import cv2
 import numpy as np
-from utils.input_utils import print_progress
-from utils.logging_utils import MAGENTA, RESET
 
 def apply_tvbox(img, w=None, h=None, out_dir=None, base_name=None, image_path=None, n_colors=None, blur_strength=None, mode=None):
-    print_progress(3, prefix=f"{MAGENTA}TV Box (Рыбий глаз + Сканлайны)...{RESET} ")
-    
     # 1. Подготовка
     # Принимаем, что img уже квантовано и, возможно, смасштабировано
     if img.dtype != np.float32:

@@ -7,8 +7,7 @@ from utils.input_utils import ask_int, ask_float, parse_int_list
 from utils.ui_utils import select_images_via_dialog
 from utils.effects_table import show_effects_table
 from processor.single_image import process_single
-# Импортируем новый процессор
-from processor.video import process_video 
+from processor.video import process_video
 from processor.effects import EFFECTS
 from colorama import Fore, Style
 
@@ -27,6 +26,7 @@ VIDEO_EXTENSIONS = {'.mp4', '.avi', '.mov', '.mkv', '.webm', '.flv', '.wmv'}
 def is_video(path):
     _, ext = os.path.splitext(path)
     return ext.lower() in VIDEO_EXTENSIONS
+
 
 def main():
     print(f"\n{BOLD}{BLUE}МИНИМАЛИСТИЧНЫЙ АРТ-ГЕНЕРАТОР (ФОТО + ВИДЕО){RESET}")
@@ -62,9 +62,21 @@ def main():
         print(f"  {i}. {os.path.basename(p)}")
     
     # --- Ввод параметров ---
-    ncolors_input = input(f"{YELLOW}Количество цветов (2–128) [Видео использует 1 значение]: {RESET}").strip()
-    n_colors_list = parse_int_list(ncolors_input, 2, 128)
-    if not n_colors_list: return
+    ncolors_input = input(f"{YELLOW}Количество цветов (2–512 или 'all' или 'no limit'): {RESET}").strip()
+    n_colors_list = parse_int_list(ncolors_input, 2, 512)
+
+    # === FIX: Обработка режима "no limit" ===
+    if n_colors_list is None:
+        print("Режим: без ограничения количества цветов")
+        n_colors_iter = [None]     # ← FIX (делаем итератор)
+        n_colors_count = 1         # ← FIX
+    elif not n_colors_list:
+        return
+    else:
+        print("Будут использованы цвета:", n_colors_list)
+        n_colors_iter = n_colors_list
+        n_colors_count = len(n_colors_list)
+    # =========================================
 
     scale = ask_float("Масштаб (1 = оригинал, 0.1–2.0): ", 0.1, 2.0)
     
@@ -73,31 +85,28 @@ def main():
     if not blur_list: return
     
     max_mode = max(EFFECTS.keys())
-    modes_input = input(f"{YELLOW}Тип эффекта (1–{max_mode}): {RESET}").strip()
+    modes_input = input(f"{YELLOW}Тип эффекта (1–{max_mode} или 'all'): {RESET}").strip()
     modes_list = parse_int_list(modes_input, 1, max_mode)
     if not modes_list: return
     
     # --- Запуск обработки ---
-    # Для простоты, если выбрано несколько параметров (цветов/размытия), 
-    # для видео мы берем только ПЕРВЫЙ параметр из списка, чтобы не генерировать 50 видеофайлов.
-    
     start_time = time.time()
     
     for idx_path, path in enumerate(input_paths, 1):
         print(f"\n{BOLD}{BLUE}>>> Файл {idx_path}/{len(input_paths)}: {os.path.basename(path)}{RESET}")
         
         if is_video(path):
-            # --- ИЗМЕНЕННЫЙ БЛОК ДЛЯ ВИДЕО (с перебором вариантов) ---
-            
-            # Подсчет общего количества видео-задач
-            total_v_tasks = len(n_colors_list) * len(blur_list) * len(modes_list)
+
+            # === FIX: корректный подсчёт задач ===
+            total_v_tasks = n_colors_count * len(blur_list) * len(modes_list)
+            # =====================================
+
             current_v_task = 0
 
             print(f"{MAGENTA}Режим ВИДЕО: Запланировано {total_v_tasks} вариант(а/ов).{RESET}")
             print(f"{YELLOW}ВНИМАНИЕ: Обработка видео долгая. Наберитесь терпения.{RESET}")
 
-            # Запускаем циклы перебора (как для фото)
-            for n_colors in n_colors_list:
+            for n_colors in n_colors_iter:   # ← FIX
                 for blur_strength in blur_list:
                     for mode in modes_list:
                         current_v_task += 1
@@ -105,19 +114,19 @@ def main():
                         print(f"Параметры: Цветов={n_colors}, Размытие={blur_strength}, Эффект={mode}")
                         
                         try:
-                            # Передаем текущие параметры из цикла
                             process_video(path, n_colors, scale, blur_strength, mode)
                         except Exception as e:
                             print(f"{RED}Ошибка видео: {e}{RESET}")
                             log_error("Ошибка видео", e, path, n_colors, blur_strength, mode)
                 
         else:
-            # Обработка ФОТО (перебор всех комбинаций, как и раньше)
-            # Считаем задачи только для текущего файла
-            local_tasks = len(n_colors_list) * len(blur_list) * len(modes_list)
+            # Фото
+            # === FIX: корректный подсчёт задач ===
+            local_tasks = n_colors_count * len(blur_list) * len(modes_list)
+            # ======================================
             completed_local = 0
             
-            for n_colors in n_colors_list:
+            for n_colors in n_colors_iter:   # ← FIX
                 for blur_strength in blur_list:
                     for mode in modes_list:
                         completed_local += 1
@@ -131,6 +140,7 @@ def main():
     total_time = time.time() - start_time
     mins, secs = divmod(int(total_time), 60)
     print(f"\n\n{GREEN}ВСЕ ЗАДАЧИ ВЫПОЛНЕНЫ!{RESET} ({mins} мин {secs} сек)")
+
 
 if __name__ == "__main__":
     main()

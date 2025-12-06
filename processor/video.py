@@ -133,8 +133,7 @@ def process_video(video_path, n_colors, scale, blur_strength, mode):
             # 4. Эффект
             # УНИФИКАЦИЯ ИНТЕРФЕЙСА: передаем n_colors, blur_strength, mode
             art_frame = get_effect(mode)(
-                quantized, new_w, new_h, out_dir, f"frame_{processed_count}",
-                n_colors=n_colors, blur_strength=blur_strength, mode=mode 
+                quantized, new_w, new_h, out_dir, f"frame_{processed_count}"
             )
             
             # Если эффект вернул что-то странное (список), берем первый элемент

@@ -26,12 +26,17 @@ def ask_float(prompt, min_v, max_v):
 
 def parse_int_list(text, min_v, max_v):
     """
-    Разбирает ввод пользователя вроде:
+    Разбирает ввод пользователя:
     '3,5,7' -> [3,5,7]
     '2-5' -> [2,3,4,5]
-    'all' -> полный диапазон от min_v до max_v
+    'all' -> полный диапазон
+    'no limit' -> None (без ограничения)
     """
     text = text.strip().lower()
+
+    if text in ("no limit", "nolimit", "∞", "inf", "unlimited"):
+        return None
+
     if text == "all":
         return list(range(min_v, max_v + 1))
 

@@ -3,3 +3,4 @@ output_minimal_art/
 *.log
 logs/
 __pycache__/
+пример/
