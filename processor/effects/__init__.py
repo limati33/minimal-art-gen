@@ -23,7 +23,7 @@ from .mode_21_xray import apply_xray
 from .mode_22_graph import apply_graph
 from .mode_23_vicecity import apply_vicecity
 from .mode_24_tvbox import apply_tvbox
-from .mode_25_limbo import apply_stainedglass
+from .mode_25_stainedglass import apply_stainedglass
 EFFECTS = {
     1: apply_poster,
     2: apply_smooth,
