@@ -58,3 +58,76 @@ def parse_int_list(text, min_v, max_v):
             except:
                 pass
     return sorted(result)
+
+def parse_mode_list(text, min_v, max_v):
+    """
+    Разбирает ввод для выбора режимов/комбинаций эффектов.
+    Поддерживает:
+      - 'all' -> [1,2,...,max_v]
+      - '3' -> [3]
+      - '2-5' -> [2,3,4,5]
+      - '9+12' -> [(9,12)]  (кортеж означает последовательное применение 9 затем 12)
+      - '9+12,3,5-6' -> [(9,12), 3, 5, 6]
+
+    Возвращает список элементов, где элемент — int (один эффект) или tuple(int,...) (последовательность).
+    Возвращает [] при некорректном вводе.
+    """
+    text = (text or "").strip().lower()
+    if not text:
+        return []
+
+    if text == "all":
+        return list(range(min_v, max_v + 1))
+
+    out = []
+    # разделяем по запятым (ввод может быть '9+12,3,5-6')
+    parts = [p.strip() for p in text.split(",") if p.strip()]
+    for part in parts:
+        # каждый part может быть 'a+b+c' или 'n' или 'n-m'
+        if "+" in part:
+            sub = []
+            ok = True
+            for token in part.split("+"):
+                token = token.strip()
+                if not token:
+                    ok = False; break
+                # поддержим диапазоны внутри +, например "2-4+7" -> 2,3,4,7
+                if "-" in token:
+                    try:
+                        a, b = map(int, token.split("-", 1))
+                        for v in range(a, b+1):
+                            if min_v <= v <= max_v:
+                                sub.append(int(v))
+                    except:
+                        ok = False
+                        break
+                else:
+                    try:
+                        v = int(token)
+                        if min_v <= v <= max_v:
+                            sub.append(int(v))
+                        else:
+                            ok = False; break
+                    except:
+                        ok = False; break
+            if ok and sub:
+                out.append(tuple(sub))
+        else:
+            # одиночный токен или диапазон
+            token = part
+            if "-" in token:
+                try:
+                    a, b = map(int, token.split("-", 1))
+                    for v in range(a, b+1):
+                        if min_v <= v <= max_v:
+                            out.append(int(v))
+                except:
+                    continue
+            else:
+                try:
+                    v = int(token)
+                    if min_v <= v <= max_v:
+                        out.append(int(v))
+                except:
+                    continue
+    return out

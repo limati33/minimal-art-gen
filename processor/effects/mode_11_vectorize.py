@@ -17,9 +17,6 @@ def apply_vectorize(img, w, h, out_dir, base_name):
     median_blur_ksize = 3
     # ----------------------------------------------------------------
 
-    if img is None:
-        raise ValueError("apply_vectorize: img is None")
-
     img_h, img_w = img.shape[:2]
     if (img_w, img_h) != (w, h):
         w, h = img_w, img_h

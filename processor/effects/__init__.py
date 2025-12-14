@@ -24,6 +24,7 @@ from .mode_22_graph import apply_graph
 from .mode_23_vicecity import apply_vicecity
 from .mode_24_tvbox import apply_tvbox
 from .mode_25_stainedglass import apply_stainedglass
+
 EFFECTS = {
     1: apply_poster,
     2: apply_smooth,
@@ -50,6 +51,7 @@ EFFECTS = {
     23: apply_vicecity,
     24: apply_tvbox,
     25: apply_stainedglass,
+
 }
 
 

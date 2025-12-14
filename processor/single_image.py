@@ -27,8 +27,12 @@ def process_single(image_path, n_colors, scale, blur_strength, mode, out_dir=Non
         timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
         # В имени папки безопасно подставляем строковое представление n_colors
         n_colors_label = "nolimit" if n_colors is None else str(n_colors)
+        if isinstance(mode, (list, tuple)):
+            mode_label = "+".join(str(int(m)) for m in mode)
+        else:
+            mode_label = str(int(mode))
         if out_dir is None:
-            out_dir = os.path.join(OUTPUT_DIR, f"{base_name}_{timestamp}_c{n_colors_label}_b{blur_strength}_m{mode}")
+            out_dir = os.path.join(OUTPUT_DIR, f"{base_name}_{timestamp}_c{n_colors_label}_b{blur_strength}_m{mode_label}")
         os.makedirs(out_dir, exist_ok=True)
 
         print_progress(1, prefix="Загрузка... ")
@@ -104,9 +108,37 @@ def process_single(image_path, n_colors, scale, blur_strength, mode, out_dir=Non
         gc.collect()
 
         print_progress(3, prefix="Эффект... ")
-        quantized = get_effect(mode)(quantized, w, h, out_dir, base_name)
-        if isinstance(quantized, list):
-            # если эффект сохранил сам — считаем что он уже сделал работу
+
+        # Поддерживаем mode в виде int или tuple/list (последовательность)
+        def apply_mode_sequence(img_in, mode_item):
+            """
+            Возвращает изображение после применения одного эффекта (если mode_item int),
+            или последовательности (если tuple/list) — применяются по порядку.
+            Если эффект вернул список (несколько картинок), возвращаем этот список сразу.
+            """
+            img = img_in
+            # единичный режим
+            if isinstance(mode_item, int):
+                fn = get_effect(mode_item)
+                return fn(img, w, h, out_dir, base_name)
+            # последовательность режимов
+            elif isinstance(mode_item, (list, tuple)):
+                for m in mode_item:
+                    fn = get_effect(m)
+                    img = fn(img, w, h, out_dir, base_name)
+                    # если эффект вернул список/несколько артов — прерываем и возвращаем как есть
+                    if isinstance(img, list):
+                        return img
+                return img
+            else:
+                # неверный тип — возвращаем исходник
+                return img_in
+
+        # применяем
+        result_img = apply_mode_sequence(quantized, mode)
+
+        # если эффект вернул несколько изображений (сам сохранил) — обрабатываем как раньше
+        if isinstance(result_img, list):
             print(f"{YELLOW}Эффект вернул несколько изображений, сохранение пропущено.{RESET}")
             return {
                 "out_path": None,
@@ -117,7 +149,7 @@ def process_single(image_path, n_colors, scale, blur_strength, mode, out_dir=Non
                 "processed_frames": 0,
                 "peak_mem_mb": None
             }
-
+        quantized = result_img
         print_progress(4, prefix="Сохранение... ")
         duration = time.time() - start_time
         art_path = os.path.join(out_dir, f"{base_name}_minimal.png")

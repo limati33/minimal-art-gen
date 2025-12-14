@@ -3,7 +3,7 @@ import sys
 import time
 from utils.logging_utils import log_error
 from utils.file_utils import resolve_shortcut
-from utils.input_utils import ask_int, ask_float, parse_int_list
+from utils.input_utils import ask_int, ask_float, parse_int_list, parse_mode_list
 from utils.ui_utils import select_images_via_dialog
 from utils.effects_table import show_effects_table
 from processor.single_image import process_single
@@ -85,8 +85,8 @@ def main():
     if not blur_list: return
     
     max_mode = max(EFFECTS.keys())
-    modes_input = input(f"{YELLOW}Тип эффекта (1–{max_mode} или 'all'): {RESET}").strip()
-    modes_list = parse_int_list(modes_input, 1, max_mode)
+    modes_input = input(f"{YELLOW}Тип эффекта (1–{max_mode} или 'all', можно комбинации '9+12'): {RESET}").strip()
+    modes_list = parse_mode_list(modes_input, 1, max_mode)
     if not modes_list: return
     
     # --- Запуск обработки ---
