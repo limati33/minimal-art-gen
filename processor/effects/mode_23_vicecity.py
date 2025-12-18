@@ -42,8 +42,12 @@ def apply_vicecity(img, w=None, h=None, out_dir=None, base_name=None, image_path
     # Маска яркости
     bins = np.linspace(0, 1, len(NEON_COLORS) + 1)
     color_map_indices = np.digitize(gray, bins[1:])
-    
-    # Переназначение: каждый пиксель получает цвет из NEON_COLORS
+    color_map_indices = np.clip(
+        color_map_indices,
+        0,
+        len(NEON_COLORS) - 1
+    )
+
     result = NEON_COLORS[color_map_indices]
     
     # 5. Усиление Glow (Свечение)
