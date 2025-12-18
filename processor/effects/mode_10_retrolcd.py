@@ -25,7 +25,7 @@ def apply_retrolcd(img, w, h, out_dir, base_name, **kwargs):
 
     # Квантование яркости
     gray = cv2.cvtColor(lcd, cv2.COLOR_BGR2GRAY)
-    idx = np.clip((gray * (len(PALETTE)-1)).astype(np.int32), 0, len(PALETTE)-1)
-    lcd = PALETTE[idx]
+    idx = np.floor(gray * (len(PALETTE)-1)).astype(np.int32)
+    lcd = PALETTE[idx, :]  # безопасная индексация
 
     return (lcd * 255).astype(np.uint8)
