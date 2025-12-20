@@ -26,6 +26,7 @@ from .mode_24_tvbox import apply_tvbox
 from .mode_25_stainedglass import apply_stainedglass
 from .mode_26_film import apply_film
 from .mode_27_printer import apply_printer
+from .mode_28_shadowhatch import apply_shadowhatch
 
 EFFECTS = {
     1: apply_poster,
@@ -55,6 +56,7 @@ EFFECTS = {
     25: apply_stainedglass,
     26: apply_film,
     27: apply_printer,
+    28: apply_shadowhatch
 }
 
 

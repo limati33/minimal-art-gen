@@ -1,11 +1,9 @@
 # processor/effects/mode_23_vicecity.py
 import cv2
 import numpy as np
-from utils.input_utils import print_progress
-from utils.logging_utils import MAGENTA, RESET
+
 
 def apply_vicecity(img, w=None, h=None, out_dir=None, base_name=None, image_path=None, n_colors=None, blur_strength=None, mode=None):
-    print_progress(3, prefix=f"{MAGENTA}Неон / Ретро (Vice City)...{RESET} ")
     
     # ПРЕДУСЛОВИЕ: Для этого эффекта мы ожидаем, что 'img' уже является квантованным кадром (с палитрой, ограниченной n_colors).
     

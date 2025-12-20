@@ -1,5 +1,29 @@
 import textwrap
-from .logging_utils import BOLD, BLUE, MAGENTA, CYAN, YELLOW, GREEN, RED, RESET
+import re
+from wcwidth import wcswidth
+
+from .logging_utils import (
+    BOLD, BLUE, MAGENTA, CYAN, YELLOW, GREEN, RED, RESET
+)
+
+# ------------------------------------------------------------
+# ANSI-safe helpers
+# ------------------------------------------------------------
+
+ANSI_RE = re.compile(r'\x1b\[[0-9;]*m')
+
+def strip_ansi(s: str) -> str:
+    return ANSI_RE.sub('', s)
+
+def pad_visible(s: str, width: int) -> str:
+    visible = wcswidth(strip_ansi(s))
+    if visible < width:
+        return s + ' ' * (width - visible)
+    return s
+
+# ------------------------------------------------------------
+# Effects table
+# ------------------------------------------------------------
 
 def show_effects_table():
     effects = [
@@ -28,56 +52,50 @@ def show_effects_table():
         (23, "Vice City", "Неоновый ретро-вейв 80-х с VHS-зерном.", "Быстро", "Используй агрессивный Glow и высокий контраст сине-пурпурных оттенков."),
         (24, "TV Box", "Эффект кинескопа: Виньетка, полосы развертки и Рыбий глаз.", "Очень медленно", "Имитирует просмотр через старый ЭЛТ-монитор. Искажение Fish-eye может быть сильным."),
         (25, "Витраж", "Цветные стеклянные ячейки со свинцовыми границами.", "Медленно", "Имитирует классический узор витражного стекла."),
-        (26, "Плёнка", "Цветные стеклянные ячейки со свинцовыми границами.", "Медленно", "Имитирует классический узор витражного стекла."),
-        (27, "Принтер", "Цветные стеклянные ячейки со свинцовыми границами.", "Медленно", "Имитирует классический узор витражного стекла."),
+        (26, "Плёнка"   , "Тёплое аналоговое изображение с виньеткой, зерном и мягким свечением.", "Быстро", "Имитирует фотоплёнку: тёплый баланс, затемнение краёв, film grain и лёгкий bloom."),
+        (27, "Принтер", "Растровая печать с точками, смещением каналов и текстурой бумаги.", "Медленно", "Имитирует цветную печать: CMY-подобные точки, плохая калибровка и шум бумаги."),
+        (28, "Штрих-тень", "Линейная штриховка в зонах естественной тени.", "Медленно", "Определяет реальные тени по локальной яркости и накладывает штриховку, как в манге или карандашном рисунке."),
     ]
+
+    # widths
     w_num, w_name, w_desc, w_speed = 4, 20, 45, 18
-    wrap_desc = 45
-    wrap_hint = 40
+    wrap_desc, wrap_hint = 45, 40
 
-    print(f"\n{CYAN}{'='*110}{RESET}")
-    print(f"{BOLD}{BLUE}СПИСОК ДОСТУПНЫХ ЭФФЕКТОВ (с подсказками){RESET}")
-    print(f"{CYAN}{'-'*110}{RESET}")
+    total_width = w_num + w_name + w_desc + w_speed + wrap_hint
 
-    # Формируем заголовок — сначала выравниваем чистый текст, потом красим
-    hdr_num = f"{'№':<{w_num}}"
-    hdr_name = f"{'Название':<{w_name}}"
-    hdr_desc = f"{'Описание':<{w_desc}}"
-    hdr_speed = f"{'Скорость':<{w_speed}}"
-    header = f"{BOLD}{MAGENTA}{hdr_num}{RESET}{CYAN}{hdr_name}{RESET}{YELLOW}{hdr_desc}{RESET}{GREEN}{hdr_speed}{RESET}Подсказка"
+    print(f"\n{CYAN}{'='*total_width}{RESET}")
+    print(f"{BOLD}{BLUE}СПИСОК ДОСТУПНЫХ ЭФФЕКТОВ{RESET}")
+    print(f"{CYAN}{'-'*total_width}{RESET}")
+
+    header = (
+        f"{BOLD}{MAGENTA}{pad_visible('№', w_num)}{RESET}"
+        f"{CYAN}{pad_visible('Название', w_name)}{RESET}"
+        f"{YELLOW}{pad_visible('Описание', w_desc)}{RESET}"
+        f"{GREEN}{pad_visible('Скорость', w_speed)}{RESET}"
+        f"{pad_visible('Подсказка', wrap_hint)}"
+    )
     print(header)
-    print(f"{CYAN}{'-'*110}{RESET}")
+    print(f"{CYAN}{'-'*total_width}{RESET}")
 
     for n, name, desc, speed, hint in effects:
         desc_lines = textwrap.wrap(desc, wrap_desc)
         hint_lines = textwrap.wrap(hint, wrap_hint)
-        max_lines = max(len(desc_lines), len(hint_lines))
+        rows = max(len(desc_lines), len(hint_lines))
 
-        # Сначала выравниваем ПЛЕЙН-тексты, затем оборачиваем цветом (чтобы ANSI не ломали ширину)
-        name_padded = f"{name:<{w_name}}"
-        num_padded = f"{n:<{w_num}}"
-        speed_padded = f"{speed:<{w_speed}}"
+        for i in range(rows):
+            num = pad_visible(str(n), w_num) if i == 0 else " " * w_num
+            nm  = pad_visible(name, w_name) if i == 0 else " " * w_name
+            sp  = pad_visible(speed, w_speed) if i == 0 else " " * w_speed
 
-        name_col = f"{CYAN}{name_padded}{RESET}"
-        num_col = f"{BOLD}{MAGENTA}{num_padded}{RESET}"
-        speed_col = f"{GREEN}{speed_padded}{RESET}"
+            ds = pad_visible(desc_lines[i], w_desc) if i < len(desc_lines) else " " * w_desc
+            ht = pad_visible(hint_lines[i], wrap_hint) if i < len(hint_lines) else ""
 
-        desc_color = YELLOW
+            print(
+                f"{BOLD}{MAGENTA}{num}{RESET}"
+                f"{CYAN}{nm}{RESET}"
+                f"{YELLOW}{ds}{RESET}"
+                f"{GREEN}{sp}{RESET}"
+                f"{ht}"
+            )
 
-        for i in range(max_lines):
-            # номер и имя только на первой строке, иначе — пробелы соответствующей ширины
-            num_str = num_col if i == 0 else " " * w_num
-            name_str = name_col if i == 0 else " " * w_name
-
-            if i < len(desc_lines):
-                desc_plain = f"{desc_lines[i]:<{w_desc}}"
-                desc_str = f"{desc_color}{desc_plain}{RESET}"
-            else:
-                desc_str = " " * w_desc
-
-            speed_str = speed_col if i == 0 else " " * w_speed
-            hint_str = hint_lines[i] if i < len(hint_lines) else ""
-
-            print(f"{num_str}{name_str}{desc_str}{speed_str}{hint_str}")
-
-    print(f"{CYAN}{'='*110}{RESET}\n")
+    print(f"{CYAN}{'='*total_width}{RESET}\n")

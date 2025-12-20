@@ -30,7 +30,7 @@ EFFECT_NAMES = {
     11: "Векторизация", 12: "Свеча", 13: "Голограмма", 14: "Акварель", 15: "Технический",
     16: "Карта", 17: "Мозаика", 18: "Сон", 19: "Пиксель-Арт", 20: "Огненный",
     21: "Рентген", 22: "Графика", 23: "Vice City", 24: "TV box", 25: "Винтаж",
-    26: "Плёнка", 27: "Принтер"
+    26: "Плёнка", 27: "Принтер", 28: "Штрих-тень"
 }
 
 # === Логирование ошибок ===
@@ -39,7 +39,7 @@ def log_error(message: str, exc=None, image_path=None, n_colors=None, blur=None,
     log_path = os.path.join(LOG_DIR, f"error_{timestamp}.log")
 
     with open(log_path, "w", encoding="utf-8") as f:
-        f.write("=== ОШИБКА В МИНИМАЛИСТИЧНОМ АРТ-ГЕНЕРАТОРЕ ===\n")
+        f.write("=== ОШИБКА ===\n")
         f.write(f"Время: {datetime.datetime.now()}\n")
         if image_path: f.write(f"Файл: {image_path}\n")
         if n_colors is not None: f.write(f"Цветов: {n_colors}\n")

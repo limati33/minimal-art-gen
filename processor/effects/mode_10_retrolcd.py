@@ -9,11 +9,12 @@ def apply_retrolcd(img, w, h, out_dir, base_name, **kwargs):
 
     up_float = up.astype(np.float32) / 255.0
 
-    # LCD строки
-    line = np.linspace(0.9, 1.05, h).reshape(h,1)
-    backlight = 0.08
-    lcd = up_float * line[...,None] + backlight
-    lcd = np.clip(lcd, 0, 1)
+    # Явно указываем dtype=np.float32, чтобы избежать апкаста в float64
+    line = np.linspace(0.9, 1.05, h, dtype=np.float32).reshape(h, 1)
+    backlight = np.float32(0.08)
+    
+    lcd = up_float * line[..., None] + backlight
+    lcd = np.clip(lcd, 0, 1).astype(np.float32) # На всякий случай фиксируем тип
 
     # Game Boy палитра
     PALETTE = np.array([
@@ -23,9 +24,14 @@ def apply_retrolcd(img, w, h, out_dir, base_name, **kwargs):
         [155, 188, 15]
     ], dtype=np.float32) / 255.0
 
-    # Квантование яркости
+    # Теперь cv2.cvtColor получит float32 и отработает корректно
     gray = cv2.cvtColor(lcd, cv2.COLOR_BGR2GRAY)
+    
+    # Квантование яркости
     idx = np.floor(gray * (len(PALETTE)-1)).astype(np.int32)
-    lcd = PALETTE[idx, :]  # безопасная индексация
+    # Ограничиваем индексы, чтобы не вылететь за пределы массива
+    idx = np.clip(idx, 0, len(PALETTE)-1)
+    
+    lcd_final = PALETTE[idx]
 
-    return (lcd * 255).astype(np.uint8)
+    return (lcd_final * 255).astype(np.uint8)
