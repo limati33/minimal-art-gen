@@ -28,6 +28,7 @@ from .mode_26_film import apply_film
 from .mode_27_printer import apply_printer
 from .mode_28_shadowhatch import apply_shadowhatch
 from .mode_29_filter import apply_filter
+from .mode_30_neon import apply_neon
 
 EFFECTS = {
     1: apply_poster,
@@ -58,7 +59,8 @@ EFFECTS = {
     26: apply_film,
     27: apply_printer,
     28: apply_shadowhatch,
-    29: apply_filter
+    29: apply_filter,
+    30: apply_neon
 }
 
 
