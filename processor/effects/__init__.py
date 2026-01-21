@@ -29,6 +29,8 @@ from .mode_27_printer import apply_printer
 from .mode_28_shadowhatch import apply_shadowhatch
 from .mode_29_filter import apply_filter
 from .mode_30_neon import apply_neon
+from .mode_31_drift import apply_drift
+from .mode_32_underwater import apply_underwater
 
 EFFECTS = {
     1: apply_poster,
@@ -60,7 +62,9 @@ EFFECTS = {
     27: apply_printer,
     28: apply_shadowhatch,
     29: apply_filter,
-    30: apply_neon
+    30: apply_neon,
+    31: apply_drift,
+    32: apply_underwater
 }
 
 
