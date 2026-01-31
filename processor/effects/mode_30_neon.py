@@ -70,8 +70,8 @@ def apply_neon(img, w=None, h=None, out_dir=None, base_name=None):
     final_result = cv2.bitwise_and(final_result, final_result, mask=thresh)
 
     # 9. Сохранение
-    if out_dir and base_name:
-        out_path = os.path.join(out_dir, f"{base_name}_mode30_dynamic.png")
-        cv2.imwrite(out_path, final_result)
+    # if out_dir and base_name:
+    #     out_path = os.path.join(out_dir, f"{base_name}_mode30_dynamic.png")
+    #     cv2.imwrite(final_result)
 
     return final_result

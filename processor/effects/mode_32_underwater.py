@@ -1,55 +1,114 @@
-# processor/effects/mode_32_abyss.py
 import cv2
 import numpy as np
-import os
+import re
+from functools import lru_cache
+
+# Кэши для карт / масок по размерам — чтобы не пересоздавать их для каждого кадра
+_MAP_CACHE = {}
+_MASK_CACHE = {}
+
+def _extract_frame_idx_from_basename(base_name):
+    """Попытка извлечь индекс кадра из base_name вида 'frame_123'"""
+    if not base_name:
+        return 0
+    m = re.search(r'frame[_\-]?(\d+)', base_name)
+    if m:
+        try:
+            return int(m.group(1))
+        except Exception:
+            return 0
+    return 0
+
+def _get_maps(w, h):
+    # Возвращаем (base_map_x, base_map_y) из кэша или создаём
+    key = (w, h)
+    if key in _MAP_CACHE:
+        return _MAP_CACHE[key]
+    map_x, map_y = np.meshgrid(np.arange(w, dtype=np.float32), np.arange(h, dtype=np.float32))
+    _MAP_CACHE[key] = (map_x, map_y)
+    return map_x, map_y
+
+def _get_radial_mask(w, h):
+    key = (w, h)
+    if key in _MASK_CACHE:
+        return _MASK_CACHE[key]
+    mask = np.zeros((h, w), dtype=np.float32)
+    cv2.circle(mask, (w//2, h//2), int(np.sqrt(w*w + h*h)//2), 1, -1)
+    mask = cv2.GaussianBlur(mask, (max(1, (w//3)|1), max(1, (w//3)|1)), 0)
+    _MASK_CACHE[key] = mask
+    return mask
 
 def apply_underwater(img, w=None, h=None, out_dir=None, base_name=None):
     """
-    Mode 32: Абиссаль (Глубоководный эффект).
-    Мягкие органические искажения, каустика и глубокий синий градиент.
+    Анимируемая версия "Abyss 2.0".
+    - Если base_name содержит 'frame_<N>', используется N как индекс кадра (фаза).
+    - Подходит в текущий pipeline: get_effect возвращает эту функцию и process_video
+      вызывает её как fn(img, w, h, out_dir, base_name).
     """
-    if img is None: return None
-    
-    # 1. Ресайз
+    if img is None:
+        return None
+
+    # 1) Resize как раньше
     img_h, img_w = img.shape[:2]
     if w and h and (img_w != w or img_h != h):
         img = cv2.resize(img, (int(w), int(h)), interpolation=cv2.INTER_AREA)
     h, w = img.shape[:2]
 
-    # 2. ОРГАНИЧЕСКИЕ ИСКАЖЕНИЯ (вместо ряби)
-    # Создаем карту низкочастотного шума
-    noise_size = (int(w/20), int(h/20))
-    noise = np.random.uniform(-10, 10, noise_size).astype(np.float32)
-    distort_map = cv2.resize(noise, (w, h), interpolation=cv2.INTER_CUBIC)
-    
-    map_x, map_y = np.meshgrid(np.arange(w), np.arange(h))
-    map_x = map_x.astype(np.float32) + distort_map
-    map_y = map_y.astype(np.float32) + distort_map
-    
-    # Применяем плавное искажение
-    submerged = cv2.remap(img, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+    # Получаем индекс кадра (если есть) и фазу времени
+    frame_idx = _extract_frame_idx_from_basename(base_name)
+    # скорость анимации — регулируй множитель (0.12 — плавно, 0.3 — быстрее)
+    phase = frame_idx * 0.12
 
-    # 3. ЦВЕТ ГЛУБИНЫ (Color Grading)
-    # Накладываем сине-зеленый фильтр
-    sea_color = np.full_like(submerged, (120, 100, 20), dtype=np.uint8) # BGR: Темная морская волна
-    submerged = cv2.addWeighted(submerged, 0.7, sea_color, 0.3, 0)
+    # 2) ПЛАСТИЧЕСКАЯ ДЕФОРМАЦИЯ (с анимацией)
+    base_map_x, base_map_y = _get_maps(w, h)
 
-    # 4. КАУСТИКА (Световые блики воды)
-    # Создаем эффект сетки света
-    caustic_noise = np.random.normal(128, 50, (int(h/10), int(w/10))).astype(np.uint8)
-    caustic_mask = cv2.resize(caustic_noise, (w, h), interpolation=cv2.INTER_CUBIC)
-    _, caustic_mask = cv2.threshold(caustic_mask, 180, 255, cv2.THRESH_BINARY)
-    caustic_mask = cv2.GaussianBlur(caustic_mask, (15, 15), 0)
-    
-    # Добавляем блики (Screen mode)
-    caustic_layer = cv2.merge([caustic_mask, caustic_mask, caustic_mask])
-    submerged = cv2.addWeighted(submerged, 1.0, caustic_layer, 0.2, 0)
+    # смещения зависят от координат и фазы — так волны будут двигаться
+    shift_x = (8.0 * np.sin(2 * np.pi * base_map_y / 150.0 + phase)
+               + 4.0 * np.sin(2 * np.pi * base_map_y / 70.0 + phase * 1.4)
+               + 2.0 * np.sin(2 * np.pi * base_map_x / 400.0 + phase * 0.6))
+    shift_y = (5.0 * np.cos(2 * np.pi * base_map_x / 200.0 + phase * 1.1)
+               + 2.0 * np.sin(2 * np.pi * base_map_y / 300.0 + phase * 0.9))
 
-    # 5. ВИНЬЕТКА (Давление глубины)
-    kernel_x = cv2.getGaussianKernel(w, w/2)
-    kernel_y = cv2.getGaussianKernel(h, h/2)
-    vignette = kernel_y * kernel_x.T
-    vignette = vignette / vignette.max()
-    submerged = (submerged * vignette[:, :, np.newaxis]).astype(np.uint8)
+    map_x = (base_map_x + shift_x).astype(np.float32)
+    map_y = (base_map_y + shift_y).astype(np.float32)
+
+    submerged = cv2.remap(img, map_x, map_y, interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
+
+    # 3) Динамическое цветокорректирование (слегка «дышит»)
+    submerged = submerged.astype(np.float32)
+    # небольшая синусоидальная вариация интенсивностей
+    blue_boost = 1.15 + 0.05 * np.sin(phase * 1.3)
+    green_mul = 0.82 + 0.03 * np.sin(phase * 1.1 + 1.0)
+    red_mul = 0.38 + 0.02 * np.sin(phase * 0.9 + 2.0)
+    submerged[:, :, 0] *= blue_boost   # B
+    submerged[:, :, 1] *= green_mul   # G
+    submerged[:, :, 2] *= red_mul     # R (гасим)
+
+    submerged = np.clip(submerged, 0, 255).astype(np.uint8)
+
+    # 4) Динамическая, плавная каустика (без резкого шума)
+    # Используем синусы по координатам + фазу — получается плавно меняющийся рисунок
+    # Создаём паттерн на float, затем блюрим и нормализуем
+    # NOTE: вычисления делаем на базе base_map_x/base_map_y (float32)
+    caustic_pattern = (np.sin((base_map_x * 0.018 + base_map_y * 0.022) + phase * 2.2)
+                       + 0.5 * np.sin((base_map_x * 0.035 - base_map_y * 0.012) + phase * 1.6))
+    # Нормируем в 0..1
+    caustic_norm = (caustic_pattern - caustic_pattern.min()) / (np.ptp(caustic_pattern) + 1e-8)
+    caustic = (caustic_norm * 255).astype(np.uint8)
+
+    # Блюрим, уменьшаем амплитуду (чтобы не было ярких пятен)
+    k = max(3, (w // 20) | 1)
+    caustic = cv2.GaussianBlur(caustic, (k, k), 0)
+    caustic = cv2.normalize(caustic, None, 0, 50, cv2.NORM_MINMAX)
+
+    # Добавляем каустику в светлые участки: суммируем B and G, R оставляем меньше
+    b_add = caustic
+    g_add = (caustic * 0.9).astype(np.uint8)
+    r_add = (caustic * 0.1).astype(np.uint8)
+    submerged = cv2.add(submerged, cv2.merge([b_add, g_add, r_add]))
+
+    # 5) Радиационный туман (глубина) — центр чуть светлее, края темнее
+    mask = _get_radial_mask(w, h)
+    submerged = (submerged.astype(np.float32) * mask[:, :, np.newaxis]).astype(np.uint8)
 
     return submerged
