@@ -31,6 +31,9 @@ from .mode_29_filter import apply_filter
 from .mode_30_neon import apply_neon
 from .mode_31_drift import apply_drift
 from .mode_32_underwater import apply_underwater
+from .mode_33_gradient import apply_gradient
+from .mode_34_colorize import apply_colorize
+from .mode_35_focus import apply_focus
 
 EFFECTS = {
     1: apply_poster,
@@ -64,7 +67,10 @@ EFFECTS = {
     29: apply_filter,
     30: apply_neon,
     31: apply_drift,
-    32: apply_underwater
+    32: apply_underwater,
+    33: apply_gradient,
+    34: apply_colorize,
+    35: apply_focus
 }
 
 
